@@ -1,0 +1,22 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Deny all client-side direct access to security audit logs.
+    // Only the trusted backend service account can write audit events.
+    match /security_audit_logs/{document=**} {
+      allow read, write: if false;
+    }
+
+    // Deny all direct client-side modification to member metadata.
+    // Member metadata is strictly managed and synchronized by the backend.
+    match /member_metadata/{document=**} {
+      allow read, write: if false;
+    }
+
+    // Default deny for all other collections to enforce zero-trust security
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

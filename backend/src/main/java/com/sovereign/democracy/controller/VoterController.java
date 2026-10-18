@@ -59,7 +59,7 @@ public class VoterController {
 
         String adminUsername = authentication != null ? authentication.getName() : "ADMIN-001";
         VoterRecordDto created = voterService.addVoterRecord(voterId, fullName, fatherName, motherName,
-                aadhaarLast4, areaId, adminUsername, request.getRemoteAddr());
+                aadhaarLast4, areaId, adminUsername, com.sovereign.democracy.util.ClientIpUtil.getClientIp(request));
 
         return ResponseEntity.ok(ApiResponse.ok("Voter record enrolled successfully", created));
     }
@@ -73,7 +73,7 @@ public class VoterController {
 
         String adminUsername = authentication != null ? authentication.getName() : "ADMIN-001";
         try {
-            int imported = voterService.importVotersFromCsv(file.getInputStream(), adminUsername, request.getRemoteAddr());
+            int imported = voterService.importVotersFromCsv(file.getInputStream(), adminUsername, com.sovereign.democracy.util.ClientIpUtil.getClientIp(request));
             return ResponseEntity.ok(ApiResponse.ok("CSV import completed successfully",
                     Map.of("importedCount", imported, "fileName", file.getOriginalFilename())));
         } catch (Exception e) {
@@ -89,7 +89,7 @@ public class VoterController {
             HttpServletRequest request) {
 
         String adminUsername = authentication != null ? authentication.getName() : "ADMIN-001";
-        voterService.deleteVoterRecord(id, adminUsername, request.getRemoteAddr());
+        voterService.deleteVoterRecord(id, adminUsername, com.sovereign.democracy.util.ClientIpUtil.getClientIp(request));
         return ResponseEntity.ok(ApiResponse.ok("Voter record removed successfully"));
     }
 }

@@ -35,6 +35,12 @@ public class UserAccount {
     @Column(name = "last_login_at")
     private LocalDateTime lastLoginAt;
 
+    @Column(name = "recovery_email", length = 255)
+    private String recoveryEmail;
+
+    @Column(name = "password_changed_at")
+    private LocalDateTime passwordChangedAt;
+
     public UserAccount() {}
 
     public UserAccount(String username, String passwordHash, Role role, VoterRecord voterRecord) {
@@ -72,4 +78,10 @@ public class UserAccount {
 
     public LocalDateTime getLastLoginAt() { return lastLoginAt; }
     public void setLastLoginAt(LocalDateTime lastLoginAt) { this.lastLoginAt = lastLoginAt; }
+
+    public String getRecoveryEmail() { return recoveryEmail; }
+    public void setRecoveryEmail(String recoveryEmail) { this.recoveryEmail = recoveryEmail; }
+
+    public LocalDateTime getPasswordChangedAt() { return passwordChangedAt; }
+    public void setPasswordChangedAt(LocalDateTime passwordChangedAt) { this.passwordChangedAt = passwordChangedAt; }
 }

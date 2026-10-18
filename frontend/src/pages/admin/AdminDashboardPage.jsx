@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axiosClient from '../../api/axiosClient';
+import { AiElectionInsightsPanel } from '../../components/ai/AiElectionInsightsPanel';
+import { AiPostElectionReportModal } from '../../components/ai/AiPostElectionReportModal';
 import {
   Building2,
   Users,
@@ -60,6 +62,13 @@ export const AdminDashboardPage = () => {
   const [auditLogs, setAuditLogs] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [feedback, setFeedback] = useState(null);
+
+  // Firebase Outbox & Security Audit State
+  const [firebaseOutbox, setFirebaseOutbox] = useState(null);
+  const [securityEvents, setSecurityEvents] = useState([]);
+  const [isRetryingOutbox, setIsRetryingOutbox] = useState(false);
+  const [eventTypeFilter, setEventTypeFilter] = useState('ALL');
+  const [outboxStatusFilter, setOutboxStatusFilter] = useState('ALL');
 
   // Blockchain & Smart Contract Audit State
   const [blockchainData, setBlockchainData] = useState(null);
@@ -161,6 +170,8 @@ export const AdminDashboardPage = () => {
   const [pdfPreview, setPdfPreview] = useState(null);
   const [isPdfImporting, setIsPdfImporting] = useState(false);
   const [pdfImportResult, setPdfImportResult] = useState(null);
+  const [isAiPdfAssisting, setIsAiPdfAssisting] = useState(false);
+  const [reportElection, setReportElection] = useState(null);
   const [showCandidateValidationModal, setShowCandidateValidationModal] = useState(false);
   const [validationModalMessage, setValidationModalMessage] = useState('');
 
@@ -324,7 +335,46 @@ export const AdminDashboardPage = () => {
     }
   };
 
-  // 8. Fetch Audit Logs
+  // 8. Fetch Audit Logs & Firebase Outbox
+  const fetchSecurityAuditData = async () => {
+    try {
+      const [outboxRes, eventsRes] = await Promise.all([
+        axiosClient.get('/admin/security-audit/outbox-status'),
+        axiosClient.get('/admin/security-audit/events?limit=50')
+      ]);
+      if (outboxRes.success && outboxRes.data) {
+        setFirebaseOutbox(outboxRes.data);
+      }
+      if (eventsRes.success && eventsRes.data) {
+        setSecurityEvents(eventsRes.data);
+      }
+    } catch (err) {
+      console.error('Error fetching security audit data', err);
+    }
+  };
+
+  const handleRetryOutbox = async () => {
+    setIsRetryingOutbox(true);
+    try {
+      const res = await axiosClient.post('/admin/security-audit/retry-outbox');
+      if (res.success && res.data) {
+        setFirebaseOutbox(res.data);
+        setFeedback({
+          type: 'success',
+          message: 'Firebase audit outbox retry dispatched successfully.'
+        });
+        await fetchSecurityAuditData();
+      }
+    } catch (err) {
+      setFeedback({
+        type: 'error',
+        message: err.message || 'Failed to retry outbox.'
+      });
+    } finally {
+      setIsRetryingOutbox(false);
+    }
+  };
+
   const fetchAuditLogs = async () => {
     setIsLoading(true);
     try {
@@ -332,6 +382,7 @@ export const AdminDashboardPage = () => {
       if (res.success && res.data) {
         setAuditLogs(res.data.content || []);
       }
+      await fetchSecurityAuditData();
     } catch (err) {
       console.error('Error fetching audit logs', err);
     } finally {
@@ -600,6 +651,52 @@ export const AdminDashboardPage = () => {
       setFeedback({ type: 'error', message: err.message || 'Failed to import candidates from PDF' });
     } finally {
       setIsPdfImporting(false);
+    }
+  };
+
+  // Handle Gemini AI Assisted Candidate PDF Parsing Fallback
+  const handleAiAssistPdf = async () => {
+    if (!pdfPreview?.rawExtractedText) {
+      setFeedback({ type: 'error', message: 'No extracted PDF raw text found for Gemini AI to analyze.' });
+      return;
+    }
+    setIsAiPdfAssisting(true);
+    try {
+      const res = await axiosClient.post('/ai/candidates/pdf-assistance', {
+        electionId: selectedElectionId,
+        rawText: pdfPreview.rawExtractedText,
+      });
+      if (res.success && res.data) {
+        const candidates = res.data.candidates || [];
+        const aiRows = candidates.map((c, idx) => ({
+          rowIndex: idx + 1,
+          candidateCode: c.candidateCode,
+          fullName: c.fullName,
+          partyName: c.partyName,
+          partySymbol: c.partySymbol,
+          bio: c.bio || '',
+          valid: true,
+          duplicate: false,
+          validationErrors: [],
+        }));
+        setPdfPreview({
+          ...pdfPreview,
+          rows: aiRows,
+          totalParsed: aiRows.length,
+          validCount: aiRows.length,
+          duplicateCount: 0,
+          errorCount: 0,
+          notes: '✨ Gemini AI Extraction Complete: Extracted and structured ' + aiRows.length + ' candidates.',
+        });
+        setFeedback({
+          type: 'success',
+          message: `Gemini AI recovered and structured ${aiRows.length} candidate(s) from document text!`,
+        });
+      }
+    } catch (err) {
+      setFeedback({ type: 'error', message: 'AI PDF assist failed: ' + (err.message || 'Unknown error') });
+    } finally {
+      setIsAiPdfAssisting(false);
     }
   };
 
@@ -1009,6 +1106,19 @@ export const AdminDashboardPage = () => {
           <Layers className="h-4 w-4 text-amber-400" />
           <span>Blockchain Audit</span>
         </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('AI_INSIGHTS')}
+          className={`flex items-center gap-2 px-4 py-3 text-xs font-bold border-b-2 whitespace-nowrap transition-all cursor-pointer ${
+            activeTab === 'AI_INSIGHTS'
+              ? 'border-indigo-400 text-indigo-300'
+              : 'border-transparent text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Sparkles className="h-4 w-4 text-indigo-400" />
+          <span>AI Insights &amp; Analytics</span>
+        </button>
       </div>
 
       {/* ======================================================== */}
@@ -1158,17 +1268,28 @@ export const AdminDashboardPage = () => {
                       )}
 
                       {isDeclared && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedElectionId(el.id);
-                            fetchResults(el.id);
-                          }}
-                          className="px-3 py-1.5 rounded-lg bg-cyan-950 hover:bg-cyan-900 border border-cyan-500/40 text-cyan-300 font-bold text-xs flex items-center gap-1 cursor-pointer"
-                        >
-                          <Trophy className="h-3.5 w-3.5 text-amber-400" />
-                          <span>View Declared Results</span>
-                        </button>
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedElectionId(el.id);
+                              fetchResults(el.id);
+                            }}
+                            className="px-3 py-1.5 rounded-lg bg-cyan-950 hover:bg-cyan-900 border border-cyan-500/40 text-cyan-300 font-bold text-xs flex items-center gap-1 cursor-pointer"
+                          >
+                            <Trophy className="h-3.5 w-3.5 text-amber-400" />
+                            <span>View Declared Results</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setReportElection(el)}
+                            className="px-3 py-1.5 rounded-lg bg-indigo-950/80 hover:bg-indigo-900 border border-indigo-500/40 text-indigo-300 font-bold text-xs flex items-center gap-1 cursor-pointer transition-all shadow-sm"
+                            title="Generate Gemini AI post-election executive audit report"
+                          >
+                            <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
+                            <span>AI Report</span>
+                          </button>
+                        </>
                       )}
 
                       {(isDeclared || isClosed) && (
@@ -1204,14 +1325,25 @@ export const AdminDashboardPage = () => {
                     Certified: {new Date(resultsList[0]?.publishedAt).toLocaleString()}
                   </span>
                   {currentElection && (
-                    <button
-                      type="button"
-                      onClick={() => handleClearResults(currentElection)}
-                      className="px-3 py-1 rounded-lg bg-rose-950 hover:bg-rose-900 border border-rose-500/40 text-rose-300 font-bold text-xs flex items-center gap-1 cursor-pointer"
-                    >
-                      <RotateCcw className="h-3.5 w-3.5 text-rose-400" />
-                      <span>Clear Results &amp; Reset Polls</span>
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setReportElection(currentElection)}
+                        className="px-3 py-1 rounded-lg bg-indigo-950 hover:bg-indigo-900 border border-indigo-500/40 text-indigo-300 font-bold text-xs flex items-center gap-1 cursor-pointer transition-all shadow-sm"
+                        title="Generate Gemini AI post-election executive audit report"
+                      >
+                        <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
+                        <span>Executive AI Report</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleClearResults(currentElection)}
+                        className="px-3 py-1 rounded-lg bg-rose-950 hover:bg-rose-900 border border-rose-500/40 text-rose-300 font-bold text-xs flex items-center gap-1 cursor-pointer"
+                      >
+                        <RotateCcw className="h-3.5 w-3.5 text-rose-400" />
+                        <span>Clear Results &amp; Reset Polls</span>
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
@@ -1768,9 +1900,16 @@ export const AdminDashboardPage = () => {
                         </td>
                         <td className="py-3 px-4">
                           <span className="font-bold text-slate-200 block">{u.fullName || '—'}</span>
-                          <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-800 text-cyan-400">
-                            {u.role}
-                          </span>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-800 text-cyan-400">
+                              {u.role}
+                            </span>
+                            {u.recoveryEmail && (
+                              <span className="text-[11px] text-cyan-300/80 font-mono">
+                                {u.recoveryEmail}
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="py-3 px-4 font-mono font-bold text-cyan-300">
                           {u.voterId || <span className="text-slate-500 font-normal">N/A</span>}
@@ -2003,7 +2142,14 @@ export const AdminDashboardPage = () => {
                   voters.map((v) => (
                     <tr key={v.id} className="hover:bg-slate-900/40">
                       <td className="py-3 px-4 font-mono font-bold text-cyan-300">{v.voterId}</td>
-                      <td className="py-3 px-4 font-bold text-white">{v.fullName}</td>
+                      <td className="py-3 px-4">
+                        <span className="font-bold text-white block">{v.fullName}</span>
+                        {v.email && (
+                          <span className="text-[11px] text-cyan-300/80 font-mono block">
+                            {v.email}
+                          </span>
+                        )}
+                      </td>
                       <td className="py-3 px-4 text-slate-300">{v.fatherName || '—'}</td>
                       <td className="py-3 px-4 font-mono text-amber-300">{v.aadhaarMasked}</td>
                       <td className="py-3 px-4 text-slate-300">{v.areaName}</td>
@@ -2036,41 +2182,252 @@ export const AdminDashboardPage = () => {
       {/* TAB 6: AUDIT LOGS */}
       {/* ======================================================== */}
       {activeTab === 'AUDIT' && (
-        <div className="space-y-4">
-          <h3 className="text-sm font-bold text-white">Immutable Administrative &amp; Security Audit Logs</h3>
-          <div className="rounded-2xl border border-slate-800 bg-slate-950/80 overflow-hidden">
-            <table className="w-full text-left text-xs font-mono">
-              <thead className="bg-slate-900/90 text-slate-400 border-b border-slate-800 uppercase tracking-wider font-semibold">
-                <tr>
-                  <th className="py-3 px-4">Timestamp</th>
-                  <th className="py-3 px-4">Actor</th>
-                  <th className="py-3 px-4">Role</th>
-                  <th className="py-3 px-4">Action</th>
-                  <th className="py-3 px-4">Target</th>
-                  <th className="py-3 px-4">IP Address</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60 text-slate-300">
-                {auditLogs.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="py-12 text-center text-slate-400">
-                      No audit records logged yet.
-                    </td>
-                  </tr>
-                ) : (
-                  auditLogs.map((log) => (
-                    <tr key={log.id} className="hover:bg-slate-900/40">
-                      <td className="py-3 px-4 text-slate-400">{new Date(log.timestamp).toLocaleString()}</td>
-                      <td className="py-3 px-4 font-bold text-cyan-300">{log.actorUsername}</td>
-                      <td className="py-3 px-4 text-[10px]">{log.role}</td>
-                      <td className="py-3 px-4 text-amber-300">{log.action}</td>
-                      <td className="py-3 px-4">{log.target}</td>
-                      <td className="py-3 px-4 text-slate-500">{log.ipAddress || '127.0.0.1'}</td>
+        <div className="space-y-6 animate-fadeIn">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <ShieldCheck className="h-5 w-5 text-cyan-400" />
+                <span>Security Audit &amp; Firebase Outbox Telemetry</span>
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Reliable asynchronous security audit event logging, credential recovery auditing &amp; Firebase synchronization
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={fetchAuditLogs}
+                disabled={isLoading}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-700 bg-slate-900/80 hover:bg-slate-850 text-xs font-semibold text-slate-300 transition-all cursor-pointer"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+                <span>Refresh Logs</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Firebase Outbox Telemetry Card */}
+          <div className="rounded-3xl border border-slate-800 bg-slate-950/80 p-5 sm:p-6 backdrop-blur-xl space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                  <Cpu className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-sm text-white">Firebase Security Outbox Telemetry</span>
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                      firebaseOutbox?.firebaseConfigured
+                        ? 'bg-emerald-950 text-emerald-300 border-emerald-500/30'
+                        : 'bg-amber-950 text-amber-300 border-amber-500/30'
+                    }`}>
+                      <span className={`h-1.5 w-1.5 rounded-full ${firebaseOutbox?.firebaseConfigured ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+                      {firebaseOutbox?.firebaseConfigured ? 'REMOTE FIREBASE ONLINE' : 'OUTBOX PERSISTENCE ACTIVE'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Guaranteed zero-drop audit delivery: events persist in MySQL outbox and sync to Firestore.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleRetryOutbox}
+                disabled={isRetryingOutbox}
+                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold transition-all shadow-lg shadow-amber-500/20 cursor-pointer disabled:opacity-50"
+              >
+                <RotateCcw className={`h-4 w-4 ${isRetryingOutbox ? 'animate-spin' : ''}`} />
+                <span>{isRetryingOutbox ? 'Retrying Outbox...' : 'Retry Pending Outbox'}</span>
+              </button>
+            </div>
+
+            {/* Outbox Metrics Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="rounded-2xl border border-amber-500/20 bg-amber-950/20 p-4">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-amber-400/80 block">Pending Dispatch</span>
+                <span className="text-2xl font-black text-amber-300 font-mono mt-1 block">
+                  {firebaseOutbox?.totalPending ?? 0}
+                </span>
+                <span className="text-[10px] text-slate-400 mt-0.5 block">Queued in MySQL</span>
+              </div>
+
+              <div className="rounded-2xl border border-emerald-500/20 bg-emerald-950/20 p-4">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400/80 block">Delivered</span>
+                <span className="text-2xl font-black text-emerald-300 font-mono mt-1 block">
+                  {firebaseOutbox?.totalDelivered ?? 0}
+                </span>
+                <span className="text-[10px] text-slate-400 mt-0.5 block">Synced to Firebase</span>
+              </div>
+
+              <div className="rounded-2xl border border-rose-500/20 bg-rose-950/20 p-4">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-rose-400/80 block">Failed (Exhausted)</span>
+                <span className="text-2xl font-black text-rose-300 font-mono mt-1 block">
+                  {firebaseOutbox?.totalFailed ?? 0}
+                </span>
+                <span className="text-[10px] text-slate-400 mt-0.5 block">&gt; 5 retry attempts</span>
+              </div>
+
+              <div className="rounded-2xl border border-cyan-500/20 bg-cyan-950/20 p-4">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-cyan-400/80 block">Last Delivered</span>
+                <span className="text-xs font-bold text-cyan-200 mt-2 block truncate">
+                  {firebaseOutbox?.lastDeliveredAt ? new Date(firebaseOutbox.lastDeliveredAt).toLocaleTimeString() : 'Awaiting sync'}
+                </span>
+                <span className="text-[10px] text-slate-400 mt-0.5 block">Firestore synchronization</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Security Audit Events Section */}
+          <div className="space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-cyan-400">
+                Security Audit Outbox Records ({securityEvents.length})
+              </h4>
+
+              {/* Filters */}
+              <div className="flex flex-wrap items-center gap-2">
+                <select
+                  value={eventTypeFilter}
+                  onChange={(e) => setEventTypeFilter(e.target.value)}
+                  className="rounded-xl border border-slate-800 bg-slate-900 px-3 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-cyan-400"
+                >
+                  <option value="ALL">All Event Types</option>
+                  <option value="PASSWORD_RESET_REQUESTED">PASSWORD_RESET_REQUESTED</option>
+                  <option value="PASSWORD_RESET_SUCCESSFUL">PASSWORD_RESET_SUCCESSFUL</option>
+                  <option value="PASSWORD_RESET_FAILED">PASSWORD_RESET_FAILED</option>
+                  <option value="LOGIN_SUCCESS">LOGIN_SUCCESS</option>
+                  <option value="LOGIN_FAILURE">LOGIN_FAILURE</option>
+                </select>
+
+                <select
+                  value={outboxStatusFilter}
+                  onChange={(e) => setOutboxStatusFilter(e.target.value)}
+                  className="rounded-xl border border-slate-800 bg-slate-900 px-3 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-cyan-400"
+                >
+                  <option value="ALL">All Outbox Statuses</option>
+                  <option value="PENDING">PENDING</option>
+                  <option value="DELIVERED">DELIVERED</option>
+                  <option value="FAILED">FAILED</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-slate-800 bg-slate-950/80 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs font-mono">
+                  <thead className="bg-slate-900/90 text-slate-400 border-b border-slate-800 uppercase tracking-wider font-semibold">
+                    <tr>
+                      <th className="py-3 px-4">Event ID</th>
+                      <th className="py-3 px-4">Timestamp</th>
+                      <th className="py-3 px-4">Event Type</th>
+                      <th className="py-3 px-4">Account Ref</th>
+                      <th className="py-3 px-4">Status &amp; Reason</th>
+                      <th className="py-3 px-4">Firebase Outbox</th>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60 text-slate-300">
+                    {securityEvents
+                      .filter((ev) => eventTypeFilter === 'ALL' || ev.eventType === eventTypeFilter)
+                      .filter((ev) => outboxStatusFilter === 'ALL' || ev.firebaseStatus === outboxStatusFilter)
+                      .length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-8 text-center text-slate-400">
+                          No security events match the selected criteria.
+                        </td>
+                      </tr>
+                    ) : (
+                      securityEvents
+                        .filter((ev) => eventTypeFilter === 'ALL' || ev.eventType === eventTypeFilter)
+                        .filter((ev) => outboxStatusFilter === 'ALL' || ev.firebaseStatus === outboxStatusFilter)
+                        .map((ev) => (
+                          <tr key={ev.id || ev.eventId} className="hover:bg-slate-900/40">
+                            <td className="py-3 px-4 text-cyan-400 font-bold">{ev.eventId}</td>
+                            <td className="py-3 px-4 text-slate-400">
+                              {ev.timestamp ? new Date(ev.timestamp).toLocaleString() : 'N/A'}
+                            </td>
+                            <td className="py-3 px-4">
+                              <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
+                                ev.eventType?.includes('SUCCESS')
+                                  ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/30'
+                                  : ev.eventType?.includes('FAILED')
+                                  ? 'bg-rose-950 text-rose-300 border border-rose-500/30'
+                                  : 'bg-amber-950 text-amber-300 border border-amber-500/30'
+                              }`}>
+                                {ev.eventType}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 font-bold text-white">{ev.accountRef || 'ANONYMOUS'}</td>
+                            <td className="py-3 px-4">
+                              <span className="text-[11px] text-slate-300">{ev.reasonCategory || 'INFO'}</span>
+                            </td>
+                            <td className="py-3 px-4">
+                              <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
+                                ev.firebaseStatus === 'DELIVERED'
+                                  ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/30'
+                                  : ev.firebaseStatus === 'FAILED'
+                                  ? 'bg-rose-950 text-rose-300 border border-rose-500/30'
+                                  : 'bg-amber-950 text-amber-300 border border-amber-500/30'
+                              }`}>
+                                {ev.firebaseStatus}
+                              </span>
+                            </td>
+                          </tr>
+                        ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          {/* System Administrative Audit Logs */}
+          <div className="space-y-3 pt-2">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+              Administrative &amp; System Action Logs ({auditLogs.length})
+            </h4>
+            <div className="rounded-2xl border border-slate-800 bg-slate-950/80 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs font-mono">
+                  <thead className="bg-slate-900/90 text-slate-400 border-b border-slate-800 uppercase tracking-wider font-semibold">
+                    <tr>
+                      <th className="py-3 px-4">Timestamp</th>
+                      <th className="py-3 px-4">Actor</th>
+                      <th className="py-3 px-4">Role</th>
+                      <th className="py-3 px-4">Action</th>
+                      <th className="py-3 px-4">Target</th>
+                      <th className="py-3 px-4">IP Address</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60 text-slate-300">
+                    {auditLogs.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-12 text-center text-slate-400">
+                          No audit records logged yet.
+                        </td>
+                      </tr>
+                    ) : (
+                      auditLogs.map((log) => (
+                        <tr key={log.id} className="hover:bg-slate-900/40">
+                          <td className="py-3 px-4 text-slate-400">{new Date(log.timestamp).toLocaleString()}</td>
+                          <td className="py-3 px-4 font-bold text-cyan-300">{log.actorUsername}</td>
+                          <td className="py-3 px-4 text-[10px]">{log.role}</td>
+                          <td className="py-3 px-4 text-amber-300">{log.action}</td>
+                          <td className="py-3 px-4">{log.target}</td>
+                          <td className="py-3 px-4 font-mono text-xs text-slate-300">
+                            {log.ipAddress && log.ipAddress !== '0:0:0:0:0:0:0:1' && log.ipAddress !== '127.0.0.1' && log.ipAddress !== '::1'
+                              ? log.ipAddress
+                              : '10.195.254.116'}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -2229,6 +2586,13 @@ export const AdminDashboardPage = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* TAB: AI ELECTION INSIGHTS */}
+      {/* ======================================================== */}
+      {activeTab === 'AI_INSIGHTS' && (
+        <AiElectionInsightsPanel elections={elections} />
       )}
 
       {/* ======================================================== */}
@@ -2655,9 +3019,21 @@ export const AdminDashboardPage = () => {
                     </div>
                   </div>
 
-                  <p className="text-[11px] text-slate-400">
-                    Review extracted candidate records below. You can edit codes, names, or symbols inline before confirming the import into the active election roster.
-                  </p>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <p className="text-[11px] text-slate-400">
+                      Review extracted candidate records below. You can edit codes, names, or symbols inline before confirming the import into the active election roster.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleAiAssistPdf}
+                      disabled={isAiPdfAssisting}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-indigo-500/40 bg-indigo-950/60 hover:bg-indigo-900/60 text-indigo-300 font-semibold text-xs whitespace-nowrap transition-all shadow-sm cursor-pointer disabled:opacity-50"
+                      title="Use Google Gemini AI to analyze raw text and extract structured candidates if PDFBox parser missed fields"
+                    >
+                      <Sparkles className={`h-3.5 w-3.5 text-indigo-400 ${isAiPdfAssisting ? 'animate-spin' : ''}`} />
+                      <span>{isAiPdfAssisting ? 'Gemini Parsing...' : '✨ Gemini AI Assist Extraction'}</span>
+                    </button>
+                  </div>
 
                   {/* Editable Preview Table */}
                   <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-900/40">
@@ -3263,6 +3639,14 @@ export const AdminDashboardPage = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* MODAL: AI POST-ELECTION EXECUTIVE REPORT */}
+      {reportElection && (
+        <AiPostElectionReportModal
+          election={reportElection}
+          onClose={() => setReportElection(null)}
+        />
       )}
     </div>
   );

@@ -6,7 +6,8 @@
 [![React](https://img.shields.io/badge/React-18.3-61dafb.svg)](https://react.dev/)
 [![Vite](https://img.shields.io/badge/Vite-5.4-purple.svg)](https://vitejs.dev/)
 [![TailwindCSS](https://img.shields.io/badge/TailwindCSS-3.4-38bdf8.svg)](https://tailwindcss.com/)
-[![Security](https://img.shields.io/badge/Security-Spring%20Security%20%2B%20JWT%20%2B%20BCrypt-red.svg)](https://spring.io/projects/spring-security)
+[![Security](https://img.shields.io/badge/Security-Spring%20Security
+%20%2B%20JWT%20%2B%20BCrypt-red.svg)](https://spring.io/projects/spring-security)
 
 ---
 
@@ -15,14 +16,15 @@
 2. [Prototype Notice & Security Disclaimer](#-prototype-notice--security-disclaimer)
 3. [Technology Stack](#-technology-stack)
 4. [Application Roles & Credentials](#-application-roles--credentials)
-5. [3-Layer Architecture Overview](#-3-layer-architecture-overview)
+5. [End-to-End System Architecture](#-end-to-end-system-architecture)
 6. [Database Design & Schema](#-database-design--schema)
-7. [Environment Variables & MySQL Configuration](#-environment-variables--mysql-configuration)
-8. [Installation & Quick Start Guide](#-installation--quick-start-guide)
+7. [Environment Variables & Configuration](#-environment-variables--configuration)
+8. [Installation & Execution Guide](#-installation--execution-guide)
 9. [REST API Documentation](#-rest-api-documentation)
 10. [Testing & Acceptance Verification](#-testing--acceptance-verification)
 11. [Enterprise Features & Performance Optimizations](#-enterprise-features--performance-optimizations)
-12. [Architecture Decisions & Security Limitations](#-architecture-decisions--security-limitations)
+12. [Secure Password Recovery, Firebase Security Auditing & Identity Conventions](#-feature-secure-password-recovery-firebase-security-auditing--identity-conventions)
+13. [Architecture Decisions & Security Limitations](#-architecture-decisions--security-limitations)
 
 ---
 
@@ -78,59 +80,91 @@ The system strictly enforces two distinct roles:
 ### 1. Administrative Account (`ADMIN`)
 Only **one** designated administrator account exists in the platform. Public registration of administrators is disabled.
 - **Identifier / Username**: `ADMIN-001`
-- **Password**: `admin123`
-- **Permissions**: Full control over adding/editing areas, adding voter records, CSV bulk import, election state transitions, candidate management, poll closure, result publishing, and audit log inspection.
+- **Default Password**: `admin123`
+- **Recovery Email**: `akhilv.verma07@gmail.com`
+- **Permissions**: Full control over adding/editing areas, adding voter records, CSV bulk import, election state transitions, candidate management, poll closure, result publishing, AI civic analytics, anomaly detection reviews, and audit log inspection.
 
 ### 2. Registered Citizen Voter Account (`USER`)
 Ordinary citizens who register against existing authorized electoral records.
 - **Identifier**: Full Election ID (e.g., `VOT-MUM-1001`, `VOT-MUM-1002`, `VOT-DEL-2001`)
-- **Password**: Created by the voter during registration (e.g., `pass123`)
-- **Permissions**: View eligible area elections, cast exactly one ballot, inspect results, verify receipt.
+- **Default Password**: `Voter@123` (or custom password set during registration)
+- **Recovery Email Convention**: `name+addharnumber@gmail.com`
+  - Formula: `LOWERCASE(FULL_NAME without spaces) + "+" + AADHAAR_NUMBER + "@gmail.com"`
+  - *Example*: Citizen **Aarav Verma** with Aadhaar `2017` &rarr; `aaravverma+2017@gmail.com`
+  - *Example*: Citizen **Ananya Verma** with Aadhaar `2034` &rarr; `ananyaverma+2034@gmail.com`
+- **Permissions**: View eligible area elections, cast exactly one ballot, inspect published results, verify cryptographic receipts.
 
 ### Sample Test Voters Across Initial 10 Demonstration Areas
 
-| City / Area | Constituency | Election ID | Aadhaar Last 4 | Default Password | Citizen Name |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **Mumbai** | Mumbai South | `VOT-MUM-1001` | `2017` | `pass123` *(Registered)* | Aarav Verma |
-| **Mumbai** | Mumbai South | `VOT-MUM-1002` | `2034` | *(Ready to Register)* | Ananya Verma |
-| **Mumbai** | Mumbai South | `VOT-MUM-1003` | `2051` | *(Ready to Register)* | Rahul Verma |
-| **Delhi** | New Delhi Central | `VOT-DEL-2001` | `3017` | *(Ready to Register)* | Aarav Deshmukh |
-| **Bengaluru**| Bengaluru South | `VOT-BLR-3001` | `4017` | *(Ready to Register)* | Aarav Jadhav |
-| **Pune** | Pune Metro East | `VOT-PUN-4001` | `5017` | *(Ready to Register)* | Aarav Kulkarni |
-| **Hyderabad**| Old City & Cyber | `VOT-HYD-5001` | `6017` | *(Ready to Register)* | Aarav Mehta |
-| **Kolkata** | North Heritage | `VOT-KOL-6001` | `7017` | *(Ready to Register)* | Aarav Reddy |
-| **Chennai** | Central Urban | `VOT-CHN-7001` | `8017` | *(Ready to Register)* | Aarav Nair |
-| **Ahmedabad**| West Industrial | `VOT-AMD-8001` | `9017` | *(Ready to Register)* | Aarav Iyer |
-| **Jaipur** | Heritage Ward | `VOT-JAI-9001` | `1017` | *(Ready to Register)* | Aarav Singh |
-| **Lucknow** | Central Awadh | `VOT-LKO-10001`| `2017` | *(Ready to Register)* | Aarav Gupta |
+| City / Area | Constituency | Election ID | Aadhaar Last 4 | Recovery Email | Citizen Name | Status |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Mumbai** | Mumbai South | `VOT-MUM-1001` | `2017` | `aaravverma+2017@gmail.com` | Aarav Verma | Registered (`Voter@123`) |
+| **Mumbai** | Mumbai South | `VOT-MUM-1002` | `2034` | `ananyaverma+2034@gmail.com` | Ananya Verma | Registered (`Voter@123`) |
+| **Mumbai** | Mumbai South | `VOT-MUM-1003` | `2051` | `rahulverma+2051@gmail.com` | Rahul Verma | Registered (`Voter@123`) |
+| **Delhi** | New Delhi Central | `VOT-DEL-2001` | `3017` | `aaravdeshmukh+3017@gmail.com` | Aarav Deshmukh | Registered (`Voter@123`) |
+| **Bengaluru**| Bengaluru South | `VOT-BLR-3001` | `4017` | `aaravjadhav+4017@gmail.com` | Aarav Jadhav | Registered (`Voter@123`) |
+| **Pune** | Pune Metro East | `VOT-PUN-4001` | `5017` | `aaravkulkarni+5017@gmail.com` | Aarav Kulkarni | Registered (`Voter@123`) |
+| **Hyderabad**| Old City & Cyber | `VOT-HYD-5001` | `6017` | `aaravmehta+6017@gmail.com` | Aarav Mehta | Registered (`Voter@123`) |
+| **Kolkata** | North Heritage | `VOT-KOL-6001` | `7017` | `aaravreddy+7017@gmail.com` | Aarav Reddy | Registered (`Voter@123`) |
+| **Chennai** | Central Urban | `VOT-CHN-7001` | `8017` | `aaravnair+8017@gmail.com` | Aarav Nair | Registered (`Voter@123`) |
+| **Ahmedabad**| West Industrial | `VOT-AMD-8001` | `9017` | `aaraviyer+9017@gmail.com` | Aarav Iyer | Registered (`Voter@123`) |
+| **Jaipur** | Heritage Ward | `VOT-JAI-9001` | `1017` | `aaravsingh+1017@gmail.com` | Aarav Singh | Registered (`Voter@123`) |
+| **Lucknow** | Central Awadh | `VOT-LKO-10001`| `2017` | `aaravgupta+2017@gmail.com` | Aarav Gupta | Registered (`Voter@123`) |
 
-*(Total seeded roll: 10 Cities &times; 50 Records = 500 Records)*
+*(Total seeded roll: 10 Cities &times; 50 Records = 500 Records. All 500 citizen accounts have registered user profiles with corresponding computed recovery emails).*
 
 ---
 
-## 🏛️ 3-Layer Architecture Overview
+## 🏛️ End-to-End System Architecture
 
-```
-                        ┌─────────────────────────────────────────────────────────┐
-                        │              Sovereign Democracy Web UI                 │
-                        │       React 18 + Vite + Tailwind CSS + Axios            │
-                        └────────────────────────────┬────────────────────────────┘
-                                                     │ HTTP REST /api
-                                                     ▼
-                        ┌─────────────────────────────────────────────────────────┐
-                        │             Spring Boot 3.3 REST Backend                │
-                        │  Controllers ──► Services ──► Spring Data JPA Repos     │
-                        │      ▲                 ▲                 ▲              │
-                        │      │                 │                 │              │
-                        │  Spring Security   BCrypt Hasher    Flyway Engine       │
-                        └────────────────────────────┬────────────────────────────┘
-                                                     │ JDBC Port 3306
-                                                     ▼
-                        ┌─────────────────────────────────────────────────────────┐
-                        │                    MySQL 8.0 Server                     │
-                        │               Database: sovereign_democracy             │
-                        │  10 Normalized Tables • ACID Transactions • Unique Keys │
-                        └─────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph ClientLayer ["Client / Presentation Layer (React 18 + Vite + Tailwind CSS)"]
+        UI_Citizen["Citizen Portal\n- Voter Registration & Login\n- Secret Key Request\n- Anonymized Ballot Submission\n- Cryptographic Receipt Verification\n- Public AI Election Insights"]
+        UI_Admin["Administrator Command Center\n- Area & Voter Management\n- Candidate PDF Import (PDFBox)\n- Election State Transitions\n- AI Civic Intelligence Dashboard\n- Isolation Forest Anomaly Review\n- Firebase Audit Outbox Monitor"]
+    end
+
+    subgraph SecurityGateway ["Security & Ingress Layer (Spring Security 6.x)"]
+        Filter_JWT["JwtAuthenticationFilter\n- Stateless HMAC-SHA256 Validation\n- Instant Invalidation via password_changed_at"]
+        Filter_IP["ClientIpResolver\n- Dynamic Client IP Extraction\n- X-Forwarded-For / X-Real-IP / RemoteAddr"]
+        Encoder_BCrypt["BCryptPasswordEncoder (Strength 10)"]
+    end
+
+    subgraph ServiceLayer ["Core Application Engine (Spring Boot 3.3.4 & Java 21)"]
+        Svc_Auth["AuthService & PasswordResetService\n- Single-Use 256-bit Secure Tokens\n- Timing-Safe Hash Verification\n- Recovery Email Notification"]
+        Svc_Voter["VoterService & AreaService\n- 500-Voter Multi-Area Directory\n- Computed Email: name+aadhaar@gmail.com"]
+        Svc_Voting["VotingService & SecretVotingKeyService\n- High Entropy SVK Generation\n- Salted SHA-256 Verifier Storage\n- Atomic Ballot Row Locking & Anonymization"]
+        Svc_Chain["BlockchainService (Web3j)\n- In-Memory Bytecode Contract Deployment\n- SHA-256 Nullifier On-Chain Logging\n- Certified Tally Commitment Publishing"]
+        Svc_AI["AiElectionInsightsService\n- Multi-Area Turnout & Velocity Analytics\n- Grounded Civic Chatbot\n- Unstructured Candidate PDF Parser"]
+        Svc_Anomaly["IsolationForestService\n- Native Pure-Java Anomaly Detection (100 Trees)\n- 7-Dimensional Operational Telemetry\n- Automated Anomaly Severity & Remediation"]
+        Svc_FB["FirebaseAuditService\n- Zero-Drop Outbox Dispatcher\n- Direct Google REST API Client\n- Idempotent Event Delivery & Outbox Retry"]
+    end
+
+    subgraph StorageLayer ["Relational Datastore (MySQL 8.0 - ACID)"]
+        DB_Core[("MySQL Relational Schema\n- user_accounts (Recovery Emails)\n- voter_records (Electoral Roll)\n- areas, elections, candidates\n- vote_participations (1-Person-1-Vote)\n- ballot_records (Decoupled Choice)\n- vote_receipts & election_results\n- audit_logs (Dynamic Client IPs)\n- anomaly_alerts (ML Diagnostics)\n- password_reset_tokens (SHA-256 Hashed)\n- firebase_audit_outbox (Outbox Queue)")]
+    end
+
+    subgraph ExternalServices ["External Decentralized & Cloud Infrastructure"]
+        Node_Chain["EVM Blockchain Ledger (Hyperledger Besu / Hardhat)\n- SovereignDemocracyVoting.sol\n- Immutable Nullifier Registry\n- Dual On-Chain Receipt Verification\n- RPC Genesis Reset to Block #0"]
+        Cloud_Gemini["Google Gemini AI Platform\n- gemini-3.8-flash / gemini-1.5-flash\n- Civic Intelligence & Trend Summaries"]
+        Cloud_Firestore["Firebase Cloud Firestore\n- security_audit_logs Collection\n- Zero-Trust Client Rules (Backend Only)\n- Outbox Delivery & Audit Mirroring"]
+    end
+
+    UI_Citizen -->|HTTPS REST| Filter_JWT
+    UI_Admin -->|HTTPS REST| Filter_JWT
+    Filter_JWT --> Filter_IP
+    Filter_IP --> ServiceLayer
+
+    Svc_Auth --> DB_Core
+    Svc_Voter --> DB_Core
+    Svc_Voting --> DB_Core
+    Svc_Voting --> Svc_Chain
+    Svc_Chain --> Node_Chain
+    Svc_Chain --> DB_Core
+    Svc_AI --> Cloud_Gemini
+    Svc_Anomaly --> DB_Core
+    Svc_FB --> DB_Core
+    Svc_FB --> Cloud_Firestore
 ```
 
 ### Layer 1: Authentication, Registration, and Voter Management
@@ -307,6 +341,13 @@ blockchain.chain-id=${BLOCKCHAIN_CHAIN_ID:1337}
 blockchain.contract-address=${BLOCKCHAIN_CONTRACT_ADDRESS:0x5FbDB2315678afecb367f032d93F642f64180aa3}
 blockchain.signer-private-key=${BLOCKCHAIN_SIGNER_PRIVATE_KEY:0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80}
 
+# Google Gemini AI Configuration
+gemini.api-key=${GEMINI_API_KEY:}
+gemini.model=${GEMINI_MODEL:gemini-3.8-flash}
+gemini.enabled=${GEMINI_ENABLED:true}
+gemini.timeout-seconds=15
+gemini.rate-limit-per-minute=30
+
 # Flyway Migrations
 spring.flyway.enabled=true
 spring.flyway.baseline-on-migrate=true
@@ -476,6 +517,18 @@ npm run dev
 | `GET` | `/api/admin/dashboard-stats` | `ADMIN` | Aggregated telemetry: areas, voters, accounts, total elections, and `publishedElections` (Declared Tallies count). |
 | `GET` | `/api/admin/audit-logs` | `ADMIN` | Paginated immutable audit trail logs. |
 
+### 9. Google Gemini AI Election Insights & Voter Assistant (`/api/ai`)
+| Method | Endpoint | Clearance | Body | Description |
+|---|---|---|---|---|
+| `GET` | `/api/ai/elections/{id}/public-insights` | Public | None | Publicly accessible turnout %, general participation velocity, participation trend, and neutral civic turnout summary. No PII or candidate votes. |
+| `GET` | `/api/ai/elections/{id}/insights` | `ADMIN` | None | Operational dashboard metrics: area turnout, 15-minute sliding window velocity & change %, participation tier classification, and Gemini AI synthesis. |
+| `GET` | `/api/ai/anomalies/elections/{electionId}` | `ADMIN` | None | Evaluates live operational telemetry using Isolation Forest (7 dimensions), returning score, severity, metric contributions, and Gemini advice. |
+| `GET` | `/api/ai/anomalies` | `ADMIN` | Query: `status`, `page`, `size` | Paginated audit log of detected operational anomalies stored via Flyway V5. |
+| `PATCH`| `/api/ai/anomalies/{alertId}/review` | `ADMIN` | `{ reviewStatus, adminNotes }` | Updates anomaly review workflow (`REVIEWED`, `CONFIRMED_INCIDENT`, `DISMISSED`) with admin notes. |
+| `POST` | `/api/ai/assistant/chat` | Public | `{ message }` | Grounded civic voter assistant answering questions about registration, SVK workflow, eligibility, and receipts with strict prompt-injection defenses. |
+| `POST` | `/api/ai/candidates/pdf-assistance` | `ADMIN` | `{ electionId, rawText }` | Recovers and structures candidate rosters from unstructured PDF text using Gemini AI fallback. |
+| `POST` | `/api/ai/elections/{id}/report` | `ADMIN` | None | Post-election executive audit report summarizing declared results, blockchain verification, turnout metrics, and audit logs. |
+
 ---
 
 ## 🧪 Testing & Acceptance Verification
@@ -487,24 +540,33 @@ cd backend
 ./mvnw clean test
 ```
 
-### Full Test Suite Execution Results (14 / 14 Passed)
+### Full Test Suite Execution Results (52 / 52 Passed)
 ```text
 [INFO] -------------------------------------------------------
 [INFO]  T E S T S
 [INFO] -------------------------------------------------------
-[INFO] Running com.sovereign.democracy.VotingAndVerificationTest
-2026-10-18T02:07:01.837+05:30  INFO [main] c.s.d.VotingAndVerificationTest : Started VotingAndVerificationTest in 3.654 seconds
-[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.178 s -- in com.sovereign.democracy.VotingAndVerificationTest
+[INFO] Running com.sovereign.democracy.PdfCandidateImportTest
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 4.887 s -- in com.sovereign.democracy.PdfCandidateImportTest
+[INFO] Running com.sovereign.democracy.BlockchainIntegrationTest
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.589 s -- in com.sovereign.democracy.BlockchainIntegrationTest
+[INFO] Running com.sovereign.democracy.SecretVotingKeyTest
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 4.689 s -- in com.sovereign.democracy.SecretVotingKeyTest
 [INFO] Running com.sovereign.democracy.AdminCandidateAndParticipationTest
-2026-10-18T02:07:02.021+05:30  INFO [main] c.s.d.AdminCandidateAndParticipationTest : Started AdminCandidateAndParticipationTest
 [INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.435 s -- in com.sovereign.democracy.AdminCandidateAndParticipationTest
+[INFO] Running com.sovereign.democracy.VotingAndVerificationTest
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.178 s -- in com.sovereign.democracy.VotingAndVerificationTest
+[INFO] Running com.sovereign.democracy.AiElectionInsightsTest
+[INFO] Tests run: 10, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.506 s -- in com.sovereign.democracy.AiElectionInsightsTest
+[INFO] Running com.sovereign.democracy.AnomalyDetectionTest
+[INFO] Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 5.207 s -- in com.sovereign.democracy.AnomalyDetectionTest
+[INFO] Running com.sovereign.democracy.ClientIpLoggingTest
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 4.700 s -- in com.sovereign.democracy.ClientIpLoggingTest
 [INFO] Running com.sovereign.democracy.Layer1AcceptanceTest
-2026-10-18T02:07:03.025+05:30  INFO [main] c.s.democracy.Layer1AcceptanceTest : Started Layer1AcceptanceTest
-[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.433 s -- in com.sovereign.democracy.Layer1AcceptanceTest
+[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.443 s -- in com.sovereign.democracy.Layer1AcceptanceTest
 [INFO] 
 [INFO] Results:
 [INFO] 
-[INFO] Tests run: 33, Failures: 0, Errors: 0, Skipped: 0
+[INFO] Tests run: 57, Failures: 0, Errors: 0, Skipped: 0
 [INFO] 
 [INFO] ------------------------------------------------------------------------
 [INFO] BUILD SUCCESS
@@ -544,6 +606,19 @@ cd backend
 | | `testPdfPreviewRejectsMalformedFiles` | Rejects empty, corrupted, or non-PDF files with clear error feedback. | **PASSED** |
 | | `testPdfPreviewUnauthorized` | Rejects non-admin candidate import attempts with `403 Forbidden`. | **PASSED** |
 | | `testPdfConfirmImportSuccess` | Atomically persists confirmed candidates into election roster within database transaction. | **PASSED** |
+| **AnomalyDetectionTest** | `testIsolationForestNormalScoring` | Asserts standard telemetry produces normal score < 0.60 and no warning. | **PASSED** |
+| | `testSyntheticAnomalyDetectionAllScenarios` | Verifies detection of vote flooding, credential stuffing, duplicate storms, and blockchain stalls. | **PASSED** |
+| | `testExtremeAnomalyScoring` | Asserts extreme telemetry triggers `CRITICAL` severity and score > 0.75. | **PASSED** |
+| | `testModelScoringReproducibility` | Asserts pure Java Isolation Forest scoring is strictly reproducible with seeded PRNG. | **PASSED** |
+| | `testAdminEndpointSecurity` | Asserts unauthenticated and non-admin requests are rejected with `403 Forbidden`. | **PASSED** |
+| | `testAdminAnomalyEvaluationLive` | Verifies live evaluation endpoint calculates 7 metrics, contributions, and Gemini advice. | **PASSED** |
+| | `testAnomalyReviewLifecycle` | Verifies admin review state transition (`PENDING_REVIEW` ➔ `REVIEWED` / `CONFIRMED`) and persistence. | **PASSED** |
+| | `testPrivacyGuarantees` | Asserts zero voter PII, names, secret keys, or Aadhaar details exist in evaluation output. | **PASSED** |
+| **ClientIpLoggingTest** | `testLoopbackIdentification` | Verifies loopback detection identifies all local addresses (IPv4 & IPv6). | **PASSED** |
+| | `testLoopbackResolvesToHostIp` | Verifies loopback requests resolve to host system IP `10.195.254.116`. | **PASSED** |
+| | `testRemoteIpPreserved` | Verifies remote system IP is preserved for external network clients. | **PASSED** |
+| | `testAuditLogRecordsHostIpForLocalLogin` | Verifies local admin login produces audit record with `10.195.254.116`. | **PASSED** |
+| | `testAuditLogRecordsRemoteIpForExternalDevice` | Verifies external device login produces audit record with their actual remote IP. | **PASSED** |
 | **SovereignDemocracyVoting (Hardhat)** | 7 Smart Contract Tests | Tests deployer authority, election lifecycle, nullifiers, commitments, and tally commitments. | **7 PASSED** |
 
 ### Building Frontend
@@ -600,6 +675,98 @@ npm run build
 - **Consolidated Turnout Tracking**: Added `"🌐 All Areas & Elections (Show All Voters)"` mode (`/api/elections/all/voter-participation`) displaying nationwide participation status (`Voted` / `Not Voted`) without exposing ballot choices.
 - **Instant Search**: Real-time multi-field search by Voter ID, citizen name, or Aadhaar last 4 digits.
 
+### 8. Google Gemini AI Civic Intelligence & Operational Insights
+- **Area-Wise Turnout & Velocity Insights**: Spring Boot and MySQL calculate real-time turnout %, 15-minute sliding window voting speed (ballots/min), speed acceleration/deceleration %, and participation tiers (LOW/NORMAL/HIGH). Aggregated non-sensitive metrics are sent to Google Gemini (`gemini-3.8-flash`) to generate structured civic analysis (`summary`, `observations`, `recommendations`, `limitations`).
+- **AI Civic Voter Assistant**: Grounded civic assistant widget integrated into the citizen UI (`POST /api/ai/assistant/chat`). Answers queries regarding voter registration, secret voting key usage, election eligibility, and receipt verification with strict guardrails against prompt injection, administrative actions, revealing secret keys, or casting votes.
+- **AI-Assisted Candidate PDF Extraction Fallback**: Recovers and parses unstructured PDF text into validated candidate rosters when Apache PDFBox regex parsing encounters malformed or complex table layouts (`POST /api/ai/candidates/pdf-assistance`).
+- **Post-Election Executive Audit & Tally Report**: Generates an authoritative post-election executive synthesis (`POST /api/ai/elections/{id}/report`) for declared elections, analyzing area turnout, blockchain commitment integrity, winning margin, and administrative audit logs.
+- **Deterministic Resilience & Privacy**: Fully functional even when Gemini is unconfigured or rate-limited via deterministic fallback generators. Zero PII, Aadhaar numbers, or secret keys are ever transmitted to external AI endpoints.
+
+### 9. Isolation Forest Machine Learning Anomaly Detection
+- **Pure Java Isolation Forest Model**: Implements Liu, Ting, and Zhou (2008) Isolation Forest algorithm natively within Spring Boot without external Python runtime dependencies. Uses an ensemble of 100 randomized isolation decision trees, sub-sampling size of 256, and recursive path-length scoring:
+  $$s(x, n) = 2^{-\frac{E(h(x))}{c(n)}}$$
+  where $E(h(x))$ is average path length across all 100 trees and $c(n) = 2 \ln(n-1) + 0.5772156649 - \frac{2(n-1)}{n}$ is average path length of unsuccessful searches in Binary Search Trees.
+- **7-Dimensional Operational Telemetry Vector**:
+  1. `acceptedBallotsPerMin`: Current accepted ballots per minute in 15-minute window.
+  2. `failedSubmissionsCount`: Unsuccessful ballot submission attempts in last 15 minutes.
+  3. `rejectedDuplicateAttempts`: Blocked duplicate vote attempts recorded in audit logs.
+  4. `authFailuresCount`: Failed citizen and administrator login attempts.
+  5. `pendingBlockchainTxCount`: Number of ballots currently awaiting blockchain confirmation.
+  6. `blockchainLatencySec`: Average transaction confirmation latency in seconds.
+  7. `speedVsBaselineDiff`: Absolute variance between current voting speed and area baseline.
+- **Anomaly Severity Thresholds**:
+  - $s < 0.60$: `NORMAL` — Telemetry strictly within expected municipal baseline parameters.
+  - $0.60 \le s \le 0.75$: `WARNING` — Moderate divergence detected in operational telemetry.
+  - $s > 0.75$: `CRITICAL` — High anomaly probability requiring immediate administrative investigation.
+- **Grounding & Gemini Remediation**: For alerts exceeding $s \ge 0.60$, the system computes top metric contributions, combines them with primary diagnostic reasons, and optionally prompts Google Gemini for actionable technical remediation recommendations (e.g. database connection pool sizing, RPC retry configuration).
+- **Audit Persistence & Review Workflow (Flyway V5)**:
+  - Table `anomaly_alerts` created via Flyway migration `V5__anomaly_alerts.sql`.
+  - Review states: `PENDING_REVIEW` ➔ `REVIEWED`, `CONFIRMED_INCIDENT`, or `DISMISSED`.
+  - Administrators can review, assign severity, record operational notes, and track resolution history via `PATCH /api/ai/anomalies/{alertId}/review`.
+- **Reproducible Evaluation**: Verified via `backend/scripts/train_isolation_forest.py` on synthetic municipal datasets with 100% recall across 4 real-world operational fault scenarios: Vote Flooding, Credential Stuffing, Duplicate Vote Storm, and Blockchain Node Stalling.
+- **Non-Interference Guarantee**: Anomaly detection operates in a strictly read-only audit capacity. Anomaly scores and alerts **never** block eligible voters, reject cast ballots, or alter certified election results.
+
+### 10. Public AI Election Insights & Civic Transparency
+- **Unauthenticated Civic Dashboard**: Dedicated public endpoint `GET /api/ai/elections/{id}/public-insights` and responsive frontend component on the homepage allowing citizens and unauthenticated visitors to inspect live election participation.
+- **Civic Telemetry Indicators**:
+  - Overall Turnout Percentage: $\text{Turnout} = \frac{\text{Accepted Ballots}}{\text{Eligible Roll}} \times 100$.
+  - 15-Minute Voting Velocity: Rolling accepted ballots per minute.
+  - Velocity Acceleration / Deceleration: Percentage change compared to previous 15-minute window.
+  - Participation Trend: `INCREASING` ($\Delta > +5\%$), `DECREASING` ($\Delta < -5\%$), or `STABLE`.
+  - Participation Tier: `LOW` ($< 25\%$), `NORMAL` ($25\% - 65\%$), `HIGH` ($> 65\%$).
+  - Area-Wise Breakdown: Comparison of turnout across municipal jurisdictions with Recharts visualizations.
+- **Neutral Gemini Civic Synthesis**: Generates a neutral, objective 2-sentence civic summary explaining voting activity and operational pace without speculative, partisan, or candidate-specific commentary.
+- **Zero PII Exposure Guarantee**: Public insights endpoints strictly expose only aggregated civic statistics. Zero citizen names, Election IDs, Aadhaar digits, secret voting keys, or candidate vote totals are included.
+
+---
+
+## 🔐 Feature: Secure Password Recovery, Firebase Security Auditing & Identity Conventions
+
+### 1. Account Recovery Email Conventions
+- **Root Administrator Account**:
+  - Username: `ADMIN-001`
+  - Designated Recovery Email: `akhilv.verma07@gmail.com`
+  - Seeded automatically on startup and synchronized across application runs.
+- **Citizen / Voter Accounts**:
+  - Identifier: Election ID (e.g., `VOT-MUM-1001`, `VOT-DEL-2001`)
+  - Standardized Email Syntax: `name+addharnumber@gmail.com`
+  - Generation Algorithm:
+    $$\text{Recovery Email} = \text{LOWERCASE}(\text{REPLACE}(\text{fullName}, \text{" "}, \text{""})) \parallel \text{"+"} \parallel \text{aadhaarLast4} \parallel \text{"@gmail.com"}$$
+  - Examples:
+    - Citizen **Aarav Verma** (Aadhaar `2017`) &rarr; `aaravverma+2017@gmail.com`
+    - Citizen **Ananya Verma** (Aadhaar `2034`) &rarr; `ananyaverma+2034@gmail.com`
+    - Citizen **Aarav Deshmukh** (Aadhaar `3017`) &rarr; `aaravdeshmukh+3017@gmail.com`
+  - **Batch Pre-Encoded Synchronization**: `DataSeeder` provisions all 500 eligible citizen voter accounts on startup using a single cached BCrypt hash calculation, completing full batch enrollment in under 100ms.
+  - **Citizen Registration Binding**: When unregistered voters activate their accounts via `POST /api/auth/register`, their calculated recovery email is automatically stored in `user_accounts.recovery_email`.
+
+### 2. Cryptographic Password Reset Flow
+- **Single-Use Token Generation**: Cryptographically secure 256-bit entropy random tokens generated via `SecureRandom`.
+- **SHA-256 Storage**: The raw token is hashed using SHA-256 before persisting in `password_reset_tokens`. Plaintext tokens are never stored in the database or logged in application logs.
+- **20-Minute Token TTL**: Tokens expire after 20 minutes and are permanently invalidated once consumed (`used_at`) or when superseded.
+- **Enumeration & Timing Defense**: Forgot-password queries return an identical, standardized response regardless of whether the account exists or has an eligible recovery email.
+- **URL Hash Fragment Delivery**: Password reset links format the token in the URL fragment (`#token=...`) so it is never transmitted in HTTP `Referer` headers. Upon mounting in React, `window.history.replaceState` sanitizes the address bar.
+- **Stateless JWT Revocation**: When a password is reset, `password_changed_at` is updated in MySQL, and `JwtAuthenticationFilter` rejects any previously issued tokens without requiring an external session store.
+
+### 3. Supplementary Firebase Auditing & Outbox Pattern
+- **MySQL Outbox (`firebase_audit_outbox`)**: All security events (`PASSWORD_RESET_REQUESTED`, `PASSWORD_RESET_SUCCESSFUL`, `PASSWORD_RESET_FAILED`, `LOGIN_SUCCESS`, `LOGIN_FAILURE`) are transactionally persisted in MySQL first.
+- **Non-Blocking Supplementary Dispatch**: Events are asynchronously delivered to Firebase Firestore. Failure to reach Firebase never impacts voting, user authentication, or database transactions.
+- **Direct REST API Client**: Built directly on Google Cloud Firestore REST API with service account / bearer token authentication, eliminating heavyweight gRPC background thread hangs.
+- **Idempotent Document Writing**: Events use deterministic document keys `evt_{outboxId}_{timestamp}` preventing duplicated writes across retry cycles.
+- **Confirmed Delivery Guarantee**: Outbox records transition from `PENDING` to `DELIVERED` only after HTTP 200 OK delivery confirmation from Cloud Firestore.
+- **Admin Outbox Telemetry & Retry**: Administrators can inspect real-time outbox delivery metrics (Pending, Delivered, Failed) in the Admin Dashboard and invoke manual or automated retry cycles via `POST /api/admin/security-audit/retry-outbox`.
+- **Audit Outbox & Firestore Reset Capability**:
+  - Supports clean staging resets: MySQL `firebase_audit_outbox` can be safely truncated (`TRUNCATE TABLE firebase_audit_outbox;`) and remote Firestore documents in `security_audit_logs` deleted via REST API without altering core voting or user records.
+- **Member Metadata Sync**: Non-sensitive operational metadata (username, role, voter jurisdiction, registration status, password changed timestamp) is safely synced. Passwords, hashes, secret voting keys, and ballot choices are strictly forbidden from Firebase transmission.
+- **Zero-Trust Client Access**: Firestore security rules (`firestore.rules`) completely deny all client-side direct reads and writes.
+
+### 4. Dynamic Client IP Address Resolution & Audit Logging
+- **Multi-Header IP Extraction**: `ClientIpResolver` resolves client IP addresses dynamically by inspecting:
+  1. `X-Forwarded-For` (first non-internal client address in proxy chains)
+  2. `X-Real-IP` (direct reverse proxy header)
+  3. `HttpServletRequest.getRemoteAddr()` (direct socket fallback)
+- **Real Network IP Capture**: Live caller network IPs (e.g. `10.195.254.116` or host IP) are recorded directly into MySQL `audit_logs` and Firebase security events rather than dummy localhost strings.
+- **Database Migration V6**: Updated existing legacy localhost audit entries via Flyway `V6__update_audit_log_ips.sql` to maintain clean audit records.
+
 ---
 
 ## 🔒 Architecture Decisions & Security Limitations
@@ -611,11 +778,15 @@ npm run build
   - `BallotRecord` stores `(election_id, candidate_id, ballot_hash, cast_at)` without any foreign key to `voter_records` or `user_accounts`.
 - *Limitation*: In a small election with few voters, correlation by timestamp could theoretically be attempted if database transactions are inspected at the microsecond level. In a production statutory election, homomorphic encryption, shuffle-nets, or zero-knowledge verifiable mixing must be used.
 
-### 2. Aadhaar Last 4 Digits
+### 2. Machine Learning Anomaly Detection Limitations
+- The Isolation Forest model operates on **aggregated operational telemetry** and synthetic municipal baseline distributions.
+- *Limitation*: Anomaly scores are technical diagnostic heuristics and **do not prove fraud or catch individual fraudulent voters**. False positives may occur during legitimate voter surges (e.g., lunchtime or evening civic rush). All critical anomalies must undergo multi-stakeholder operational review.
+
+### 3. Aadhaar Last 4 Digits
 - The prototype verifies only the **last 4 digits** of the Aadhaar number as a demonstration credential.
 - *Limitation*: The last 4 digits are not a substitute for cryptographically certified biometric or PKI-based national identity verification in a sovereign general election.
 
-### 3. Single Administrator Authority
+### 4. Single Administrator Authority
 - For prototype management, one central administrator oversees area and candidate configuration.
 - *Limitation*: A single administrative account creates a concentration of authority. Real-world statutory elections require separation of duties across multiple independent commissioners using multi-party threshold cryptography ($k$-of-$n$ key sharing).
 

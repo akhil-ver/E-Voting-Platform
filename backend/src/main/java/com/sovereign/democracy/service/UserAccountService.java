@@ -138,7 +138,7 @@ public class UserAccountService {
                 ? account.getVoterRecord().getArea().getId()
                 : null;
 
-        return new UserAccountDto(
+        UserAccountDto dto = new UserAccountDto(
                 account.getId(),
                 account.getUsername(),
                 fullName,
@@ -150,5 +150,7 @@ public class UserAccountService {
                 account.getCreatedAt(),
                 account.getLastLoginAt()
         );
+        dto.setRecoveryEmail(account.getRecoveryEmail());
+        return dto;
     }
 }

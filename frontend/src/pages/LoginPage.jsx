@@ -144,9 +144,17 @@ export const LoginPage = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1.5">
-                    Password
-                  </label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-bold text-slate-300">
+                      Password
+                    </label>
+                    <Link
+                      to="/forgot-password"
+                      className="text-[11px] font-semibold text-cyan-400 hover:text-cyan-300 hover:underline transition-colors"
+                    >
+                      Forgot Password?
+                    </Link>
+                  </div>
                   <input
                     type="password"
                     required

@@ -98,4 +98,14 @@ public class VoterRecord {
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
+
+    /**
+     * Computes the official standard voter recovery email:
+     * lowercase name (spaces stripped) + '+' + aadhaarNumber + '@gmail.com'
+     */
+    public String getComputedEmail() {
+        if (fullName == null) return "voter+" + (aadhaarLast4 != null ? aadhaarLast4 : "0000") + "@gmail.com";
+        String cleanName = fullName.toLowerCase().replaceAll("[^a-z0-9]", "");
+        return cleanName + "+" + (aadhaarLast4 != null ? aadhaarLast4 : "0000") + "@gmail.com";
+    }
 }

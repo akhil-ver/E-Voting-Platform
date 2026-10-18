@@ -44,7 +44,7 @@ public class AreaController {
                                                            Authentication authentication,
                                                            HttpServletRequest request) {
         String adminUsername = authentication != null ? authentication.getName() : "ADMIN-001";
-        AreaDto created = areaService.createArea(area, adminUsername, request.getRemoteAddr());
+        AreaDto created = areaService.createArea(area, adminUsername, com.sovereign.democracy.util.ClientIpUtil.getClientIp(request));
         return ResponseEntity.ok(ApiResponse.ok("Area created successfully", created));
     }
 
@@ -55,7 +55,7 @@ public class AreaController {
                                                            Authentication authentication,
                                                            HttpServletRequest request) {
         String adminUsername = authentication != null ? authentication.getName() : "ADMIN-001";
-        AreaDto updated = areaService.updateArea(id, area, adminUsername, request.getRemoteAddr());
+        AreaDto updated = areaService.updateArea(id, area, adminUsername, com.sovereign.democracy.util.ClientIpUtil.getClientIp(request));
         return ResponseEntity.ok(ApiResponse.ok("Area updated successfully", updated));
     }
 
@@ -67,7 +67,7 @@ public class AreaController {
                                                               HttpServletRequest request) {
         String adminUsername = authentication != null ? authentication.getName() : "ADMIN-001";
         boolean active = payload.getOrDefault("active", true);
-        areaService.toggleAreaStatus(id, active, adminUsername, request.getRemoteAddr());
+        areaService.toggleAreaStatus(id, active, adminUsername, com.sovereign.democracy.util.ClientIpUtil.getClientIp(request));
         return ResponseEntity.ok(ApiResponse.ok("Area status updated to " + (active ? "active" : "inactive")));
     }
 }

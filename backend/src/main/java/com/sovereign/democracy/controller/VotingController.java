@@ -35,7 +35,7 @@ public class VotingController {
 
         String username = authentication.getName();
         com.sovereign.democracy.dto.SecretVotingKeyDto keyDto = secretVotingKeyService.issueOrReissueKey(
-                username, electionId, forceReissue, request.getRemoteAddr()
+                username, electionId, forceReissue, com.sovereign.democracy.util.ClientIpUtil.getClientIp(request)
         );
         return ResponseEntity.ok(ApiResponse.ok("Secret voting key processed successfully", keyDto));
     }
@@ -64,7 +64,7 @@ public class VotingController {
                 requestPayload.getElectionId(),
                 requestPayload.getCandidateId(),
                 requestPayload.getSecretVotingKey(),
-                request.getRemoteAddr()
+                com.sovereign.democracy.util.ClientIpUtil.getClientIp(request)
         );
 
         return ResponseEntity.ok(ApiResponse.ok("Ballot recorded successfully. Your cryptographic receipt is generated.", receipt));

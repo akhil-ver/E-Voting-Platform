@@ -64,6 +64,11 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/blockchain/health").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/blockchain/reconcile").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.POST, "/api/blockchain/reset").hasRole("ADMIN")
+                // Public AI endpoints
+                .requestMatchers(HttpMethod.GET, "/api/ai/elections/*/public-insights").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/ai/assistant/chat").permitAll()
+                // Admin AI endpoints
+                .requestMatchers("/api/ai/**").hasRole("ADMIN")
                 // H2 console for test profile
                 .requestMatchers("/h2-console/**").permitAll()
                 // Admin specific endpoints

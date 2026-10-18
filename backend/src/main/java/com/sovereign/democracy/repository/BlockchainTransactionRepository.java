@@ -30,4 +30,6 @@ public interface BlockchainTransactionRepository extends JpaRepository<Blockchai
     List<BlockchainTransaction> findAllByReceiptCode(String receiptCode);
     List<BlockchainTransaction> findByElectionAndStatus(Election election, BlockchainStatus status);
     List<BlockchainTransaction> findByStatusIn(List<BlockchainStatus> statuses);
+    long countByStatusIn(List<BlockchainStatus> statuses);
+    long countByStatus(BlockchainStatus status);
 }

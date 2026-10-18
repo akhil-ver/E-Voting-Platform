@@ -20,6 +20,7 @@ import {
   Sparkles,
   RefreshCw,
 } from 'lucide-react';
+import { PublicAiElectionInsights } from '../components/ai/PublicAiElectionInsights';
 
 export const LandingPage = () => {
   const [stats, setStats] = useState({
@@ -167,10 +168,13 @@ export const LandingPage = () => {
             <span>Security Architecture</span>
             <Lock className="h-4 w-4 text-cyan-400" />
           </div>
-          <p className="mt-2 text-2xl font-mono font-bold text-cyan-400">SVK + BCrypt</p>
-          <p className="text-[11px] text-slate-400 mt-1">256-Bit Entropy &amp; JWT</p>
+          <p className="mt-2 text-2xl font-mono font-bold text-cyan-400">JWT + Blockchain</p>
+          <p className="text-[11px] text-slate-400 mt-1">BCrypt Authentication • Blockchain Verification</p>
         </div>
       </section>
+
+      {/* Public AI Election Insights */}
+      <PublicAiElectionInsights />
 
       {/* 3-Layer Architecture Cards */}
       <section className="space-y-4">

@@ -41,13 +41,21 @@ public class AuthService {
         String cleanUsername = request.getUsername().trim().toUpperCase();
 
         UserAccount account = userAccountRepository.findByUsernameIgnoreCase(cleanUsername)
-                .orElseThrow(() -> new UnauthorizedException("Invalid credentials. Please verify your Election ID / Username and password."));
+                .orElseThrow(() -> {
+                    auditLogService.logAction(cleanUsername, "ANONYMOUS", "LOGIN_FAILURE", "Auth",
+                            "Unknown username authentication attempt from " + ipAddress, ipAddress);
+                    return new UnauthorizedException("Invalid credentials. Please verify your Election ID / Username and password.");
+                });
 
         if (!account.isEnabled()) {
+            auditLogService.logAction(cleanUsername, account.getRole().name(), "LOGIN_FAILURE", "Auth",
+                    "Blocked account login attempt from " + ipAddress, ipAddress);
             throw new UnauthorizedException("Your account has been blocked or deactivated by the election administration. Access denied.");
         }
 
         if (!passwordEncoder.matches(request.getPassword(), account.getPasswordHash())) {
+            auditLogService.logAction(cleanUsername, account.getRole().name(), "LOGIN_FAILURE", "Auth",
+                    "Invalid password attempt from " + ipAddress, ipAddress);
             throw new UnauthorizedException("Invalid credentials. Please verify your Election ID / Username and password.");
         }
 
@@ -124,6 +132,7 @@ public class AuthService {
         String passwordHash = passwordEncoder.encode(request.getPassword());
 
         UserAccount userAccount = new UserAccount(cleanElectionId, passwordHash, Role.USER, record);
+        userAccount.setRecoveryEmail(record.getComputedEmail());
         userAccountRepository.save(userAccount);
 
         record.setHasRegisteredAccount(true);

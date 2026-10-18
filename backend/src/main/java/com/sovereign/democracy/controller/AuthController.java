@@ -13,16 +13,36 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final com.sovereign.democracy.service.PasswordResetService passwordResetService;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, com.sovereign.democracy.service.PasswordResetService passwordResetService) {
         this.authService = authService;
+        this.passwordResetService = passwordResetService;
     }
 
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest) {
-        String ipAddress = httpRequest.getRemoteAddr();
+        String ipAddress = com.sovereign.democracy.util.ClientIpUtil.getClientIp(httpRequest);
         AuthResponse response = authService.login(request, ipAddress);
         return ResponseEntity.ok(ApiResponse.ok("Login successful", response));
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<ApiResponse<String>> forgotPassword(
+            @Valid @RequestBody ForgotPasswordRequest request,
+            HttpServletRequest httpRequest) {
+        String ipAddress = com.sovereign.democracy.util.ClientIpUtil.getClientIp(httpRequest);
+        String message = passwordResetService.requestPasswordReset(request, ipAddress);
+        return ResponseEntity.ok(ApiResponse.ok(message, message));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<ApiResponse<String>> resetPassword(
+            @Valid @RequestBody ResetPasswordRequest request,
+            HttpServletRequest httpRequest) {
+        String ipAddress = com.sovereign.democracy.util.ClientIpUtil.getClientIp(httpRequest);
+        String message = passwordResetService.resetPassword(request, ipAddress);
+        return ResponseEntity.ok(ApiResponse.ok(message, message));
     }
 
     @PostMapping("/verify-record")
@@ -33,7 +53,7 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<AuthResponse>> register(@Valid @RequestBody RegisterRequest request, HttpServletRequest httpRequest) {
-        String ipAddress = httpRequest.getRemoteAddr();
+        String ipAddress = com.sovereign.democracy.util.ClientIpUtil.getClientIp(httpRequest);
         AuthResponse response = authService.registerVoter(request, ipAddress);
         return ResponseEntity.ok(ApiResponse.ok("Account successfully registered! You are now logged in.", response));
     }

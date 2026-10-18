@@ -9,12 +9,15 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
+import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { AreaVoterListPage } from './pages/AreaVoterListPage';
 import { ElectionsPage } from './pages/voter/ElectionsPage';
 import { ResultsPage } from './pages/voter/ResultsPage';
 import { BallotVerificationPage } from './pages/voter/BallotVerificationPage';
 import { VoterDashboardPage } from './pages/voter/VoterDashboardPage';
 import { AdminDashboardPage } from './pages/admin/AdminDashboardPage';
+import { VoterAssistantChat } from './components/ai/VoterAssistantChat';
 
 export function App() {
   return (
@@ -27,6 +30,8 @@ export function App() {
               {/* Public Routes */}
               <Route path="/" element={<LandingPage />} />
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/areas" element={<AreaVoterListPage />} />
               <Route path="/results" element={<ResultsPage />} />
@@ -72,6 +77,7 @@ export function App() {
             </Routes>
           </main>
           <Footer />
+          <VoterAssistantChat />
         </div>
       </BrowserRouter>
     </AuthProvider>

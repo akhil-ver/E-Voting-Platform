@@ -134,6 +134,7 @@ public class PdfCandidateImportService {
         preview.setErrorCount(errorCount);
         preview.setRows(rows);
         preview.setNotes("Extraction completed. Review candidate records, edit fields if needed, and confirm import.");
+        preview.setRawExtractedText(extractedText);
 
         return preview;
     }

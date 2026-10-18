@@ -69,7 +69,7 @@ public class ElectionController {
         String adminUsername = authentication != null ? authentication.getName() : "ADMIN-001";
         ElectionDto created = electionService.createElection(
                 electionCode, name, electionType, areaId, startTime, endTime,
-                adminUsername, request.getRemoteAddr()
+                adminUsername, com.sovereign.democracy.util.ClientIpUtil.getClientIp(request)
         );
 
         return ResponseEntity.ok(ApiResponse.ok("Election configured successfully", created));
@@ -86,7 +86,7 @@ public class ElectionController {
             HttpServletRequest request) {
 
         String adminUsername = authentication != null ? authentication.getName() : "ADMIN-001";
-        ElectionDto updated = electionService.openElection(id, adminUsername, request.getRemoteAddr());
+        ElectionDto updated = electionService.openElection(id, adminUsername, com.sovereign.democracy.util.ClientIpUtil.getClientIp(request));
 
         return ResponseEntity.ok(ApiResponse.ok("Election polls opened successfully. Candidate roster is now locked.", updated));
     }
@@ -99,7 +99,7 @@ public class ElectionController {
             HttpServletRequest request) {
 
         String adminUsername = authentication != null ? authentication.getName() : "ADMIN-001";
-        ElectionDto updated = electionService.closeElection(id, adminUsername, request.getRemoteAddr());
+        ElectionDto updated = electionService.closeElection(id, adminUsername, com.sovereign.democracy.util.ClientIpUtil.getClientIp(request));
 
         return ResponseEntity.ok(ApiResponse.ok("Election polls closed successfully", updated));
     }
@@ -115,7 +115,7 @@ public class ElectionController {
             HttpServletRequest request) {
 
         String adminUsername = authentication != null ? authentication.getName() : "ADMIN-001";
-        List<ElectionResultDto> results = electionService.tallyAndDeclareResults(id, adminUsername, request.getRemoteAddr());
+        List<ElectionResultDto> results = electionService.tallyAndDeclareResults(id, adminUsername, com.sovereign.democracy.util.ClientIpUtil.getClientIp(request));
 
         return ResponseEntity.ok(ApiResponse.ok("Election results officially tallied and declared", results));
     }
@@ -166,7 +166,7 @@ public class ElectionController {
             HttpServletRequest request) {
 
         String adminUsername = authentication != null ? authentication.getName() : "ADMIN-001";
-        ElectionDto updated = electionService.clearResultsAndReset(id, adminUsername, request.getRemoteAddr());
+        ElectionDto updated = electionService.clearResultsAndReset(id, adminUsername, com.sovereign.democracy.util.ClientIpUtil.getClientIp(request));
 
         return ResponseEntity.ok(ApiResponse.ok("Election results cleared and poll reset to OPEN successfully", updated));
     }

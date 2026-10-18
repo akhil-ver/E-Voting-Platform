@@ -65,4 +65,9 @@ public class VoterRecordDto {
 
     public Boolean getAccountEnabled() { return accountEnabled; }
     public void setAccountEnabled(Boolean accountEnabled) { this.accountEnabled = accountEnabled; }
+
+    private String email;
+
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
 }

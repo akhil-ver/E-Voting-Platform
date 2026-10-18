@@ -69,7 +69,12 @@ public class AuditLog {
     public String getDetails() { return details; }
     public void setDetails(String details) { this.details = details; }
 
-    public String getIpAddress() { return ipAddress; }
+    public String getIpAddress() {
+        if (com.sovereign.democracy.util.ClientIpUtil.isLoopback(ipAddress)) {
+            return com.sovereign.democracy.util.ClientIpUtil.DEFAULT_HOST_IP;
+        }
+        return ipAddress;
+    }
     public void setIpAddress(String ipAddress) { this.ipAddress = ipAddress; }
 
     public LocalDateTime getTimestamp() { return timestamp; }

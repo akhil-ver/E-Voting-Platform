@@ -45,7 +45,7 @@ public class BlockchainController {
 
         String username = authentication != null ? authentication.getName() : "ADMIN-001";
         Map<String, Object> result = blockchainService.resetBlockchainToGenesis(
-                redeploy, clearHistory, username, request.getRemoteAddr()
+                redeploy, clearHistory, username, com.sovereign.democracy.util.ClientIpUtil.getClientIp(request)
         );
         return ResponseEntity.ok(ApiResponse.ok("Blockchain block height reset successfully", result));
     }

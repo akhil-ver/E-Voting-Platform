@@ -20,7 +20,10 @@ public class AuditLogService {
 
     @Transactional
     public AuditLog logAction(String actorUsername, String role, String action, String target, String details, String ipAddress) {
-        AuditLog log = new AuditLog(actorUsername, role, action, target, details, ipAddress);
+        String resolvedIp = com.sovereign.democracy.util.ClientIpUtil.isLoopback(ipAddress) 
+                ? com.sovereign.democracy.util.ClientIpUtil.getHostSystemIp() 
+                : ipAddress;
+        AuditLog log = new AuditLog(actorUsername, role, action, target, details, resolvedIp);
         return auditLogRepository.save(log);
     }
 

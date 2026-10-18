@@ -91,6 +91,14 @@ public class VotingService {
 
         // 3. Duplicate Prevention Check
         if (voteParticipationRepository.existsByElectionAndVoterRecord(election, voter)) {
+            auditLogService.logAction(
+                    username,
+                    "USER",
+                    "DUPLICATE_VOTE_BLOCKED",
+                    "Election:" + election.getElectionCode(),
+                    "Duplicate ballot submission attempt blocked for voter " + voter.getVoterId(),
+                    clientIp
+            );
             throw new BadRequestException("Duplicate vote rejected: You have already cast your ballot in this election.");
         }
 

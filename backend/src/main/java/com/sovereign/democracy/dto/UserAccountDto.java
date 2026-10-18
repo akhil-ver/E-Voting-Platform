@@ -61,4 +61,9 @@ public class UserAccountDto {
 
     public LocalDateTime getLastLoginAt() { return lastLoginAt; }
     public void setLastLoginAt(LocalDateTime lastLoginAt) { this.lastLoginAt = lastLoginAt; }
+
+    private String recoveryEmail;
+
+    public String getRecoveryEmail() { return recoveryEmail; }
+    public void setRecoveryEmail(String recoveryEmail) { this.recoveryEmail = recoveryEmail; }
 }

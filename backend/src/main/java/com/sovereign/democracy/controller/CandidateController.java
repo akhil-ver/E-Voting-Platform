@@ -53,7 +53,7 @@ public class CandidateController {
         String adminUsername = authentication != null ? authentication.getName() : "ADMIN-001";
         CandidateDto created = candidateService.addCandidate(
                 electionId, candidateCode, fullName, partyName, partySymbol, symbolImageUrl, bio,
-                adminUsername, request.getRemoteAddr()
+                adminUsername, com.sovereign.democracy.util.ClientIpUtil.getClientIp(request)
         );
 
         return ResponseEntity.ok(ApiResponse.ok("Candidate registered successfully", created));
@@ -76,7 +76,7 @@ public class CandidateController {
         String adminUsername = authentication != null ? authentication.getName() : "ADMIN-001";
         CandidateDto updated = candidateService.updateCandidate(
                 id, fullName, partyName, partySymbol, symbolImageUrl, bio,
-                adminUsername, request.getRemoteAddr()
+                adminUsername, com.sovereign.democracy.util.ClientIpUtil.getClientIp(request)
         );
 
         return ResponseEntity.ok(ApiResponse.ok("Candidate updated successfully", updated));
@@ -90,7 +90,7 @@ public class CandidateController {
             HttpServletRequest request) {
 
         String adminUsername = authentication != null ? authentication.getName() : "ADMIN-001";
-        candidateService.deleteCandidate(id, adminUsername, request.getRemoteAddr());
+        candidateService.deleteCandidate(id, adminUsername, com.sovereign.democracy.util.ClientIpUtil.getClientIp(request));
 
         return ResponseEntity.ok(ApiResponse.ok("Candidate deleted successfully", null));
     }
@@ -112,7 +112,7 @@ public class CandidateController {
             HttpServletRequest servletRequest) {
         String adminUsername = authentication != null ? authentication.getName() : "ADMIN-001";
         com.sovereign.democracy.dto.PdfCandidateImportResultDto result = pdfCandidateImportService.confirmImport(
-                request, adminUsername, servletRequest.getRemoteAddr()
+                request, adminUsername, com.sovereign.democracy.util.ClientIpUtil.getClientIp(servletRequest)
         );
         return ResponseEntity.ok(ApiResponse.ok("Candidates imported successfully from PDF", result));
     }

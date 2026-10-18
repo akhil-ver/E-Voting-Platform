@@ -12,8 +12,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 @Component
 public class DataSeeder implements CommandLineRunner {
@@ -54,8 +53,15 @@ public class DataSeeder implements CommandLineRunner {
                     Role.ADMIN,
                     null
             );
+            admin.setRecoveryEmail("akhilv.verma07@gmail.com");
             userAccountRepository.save(admin);
-            log.info("Created single root administrator: ADMIN-001 (Role: ADMIN)");
+            log.info("Created root administrator: ADMIN-001 (Role: ADMIN, Recovery Email: akhilv.verma07@gmail.com)");
+        } else {
+            userAccountRepository.findByUsernameIgnoreCase("ADMIN-001").ifPresent(admin -> {
+                admin.setRecoveryEmail("akhilv.verma07@gmail.com");
+                userAccountRepository.save(admin);
+                log.info("Verified root administrator ADMIN-001 recovery email set to: akhilv.verma07@gmail.com");
+            });
         }
 
         // 2. Seed 10 Demonstration Areas
@@ -110,8 +116,54 @@ public class DataSeeder implements CommandLineRunner {
             log.info("Verified active OPEN election {} for area {} with candidates", esc.electionCode, area.getName());
         }
 
-        log.info("Seed check complete. Total Areas: {}, Total Voter Records: {}, Total Elections: {}, Total Candidates: {}, Admin Accounts: {}",
-                areaRepository.count(), voterRecordRepository.count(), electionRepository.count(), candidateRepository.count(), userAccountRepository.countByRole(Role.ADMIN));
+        // 5. Ensure all voter records have corresponding UserAccounts with standard recovery emails (name+aadhaar@gmail.com)
+        List<VoterRecord> allVoters = voterRecordRepository.findAll();
+        Map<String, UserAccount> existingAccountMap = new HashMap<>();
+        for (UserAccount ua : userAccountRepository.findAll()) {
+            existingAccountMap.put(ua.getUsername().toUpperCase(), ua);
+        }
+
+        String defaultVoterPasswordHash = null;
+        List<UserAccount> accountsToSave = new ArrayList<>();
+        List<VoterRecord> votersToUpdate = new ArrayList<>();
+
+        for (VoterRecord vr : allVoters) {
+            String expectedEmail = vr.getComputedEmail();
+            UserAccount ua = existingAccountMap.get(vr.getVoterId().toUpperCase());
+            if (ua != null) {
+                if (!expectedEmail.equalsIgnoreCase(ua.getRecoveryEmail())) {
+                    ua.setRecoveryEmail(expectedEmail);
+                    accountsToSave.add(ua);
+                }
+            } else {
+                if (defaultVoterPasswordHash == null) {
+                    defaultVoterPasswordHash = passwordEncoder.encode("Voter@123");
+                }
+                UserAccount newUa = new UserAccount(
+                        vr.getVoterId(),
+                        defaultVoterPasswordHash,
+                        Role.USER,
+                        vr
+                );
+                newUa.setRecoveryEmail(expectedEmail);
+                accountsToSave.add(newUa);
+                if (!vr.isHasRegisteredAccount()) {
+                    vr.setHasRegisteredAccount(true);
+                    votersToUpdate.add(vr);
+                }
+            }
+        }
+
+        if (!accountsToSave.isEmpty()) {
+            userAccountRepository.saveAll(accountsToSave);
+            log.info("Synchronized recovery emails for {} voter accounts (format: name+aadhaar@gmail.com)", accountsToSave.size());
+        }
+        if (!votersToUpdate.isEmpty()) {
+            voterRecordRepository.saveAll(votersToUpdate);
+        }
+
+        log.info("Seed check complete. Total Areas: {}, Total Voter Records: {}, Total Elections: {}, Total Candidates: {}, Admin Accounts: {}, Total Citizen Accounts: {}",
+                areaRepository.count(), voterRecordRepository.count(), electionRepository.count(), candidateRepository.count(), userAccountRepository.countByRole(Role.ADMIN), userAccountRepository.countByRole(Role.USER));
     }
 
     private static class CandidateSeed {

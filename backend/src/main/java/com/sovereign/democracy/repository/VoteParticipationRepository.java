@@ -18,5 +18,7 @@ public interface VoteParticipationRepository extends JpaRepository<VoteParticipa
     List<VoteParticipation> findByVoterRecord(VoterRecord voterRecord);
     long countByElection(Election election);
     long countByElectionId(Long electionId);
+    long countByElectionAndVotedAtBetween(Election election, java.time.LocalDateTime start, java.time.LocalDateTime end);
+    long countByElectionAndVotedAtAfter(Election election, java.time.LocalDateTime after);
     void deleteByElection(Election election);
 }

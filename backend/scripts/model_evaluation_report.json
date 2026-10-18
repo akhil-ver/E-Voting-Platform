@@ -1,0 +1,36 @@
+{
+  "model_version": "IsolationForest-v1.0",
+  "algorithm": "Isolation Forest (Liu, Ting, Zhou 2008)",
+  "hyperparameters": {
+    "n_estimators": 100,
+    "max_samples": 256,
+    "max_depth": 8,
+    "random_state": 42,
+    "threshold_warning": 0.58,
+    "threshold_critical": 0.7
+  },
+  "evaluation_metrics": {
+    "test_normal_samples": 150,
+    "test_anomaly_samples": 48,
+    "true_positives": 48,
+    "false_positives": 14,
+    "true_negatives": 136,
+    "false_negatives": 0,
+    "precision": 0.7742,
+    "recall": 1.0,
+    "f1_score": 0.8727,
+    "false_positive_rate": 0.0933,
+    "avg_normal_score": 0.4735,
+    "avg_anomaly_score": 0.6918
+  },
+  "feature_dimensions": [
+    "acceptedBallotsPerMin",
+    "failedSubmissionsCount",
+    "rejectedDuplicateAttempts",
+    "authFailuresCount",
+    "pendingBlockchainTxCount",
+    "blockchainLatencySec",
+    "speedVsBaselineDiff"
+  ],
+  "limitation_note": "Calibrated on synthetic election operational data for demonstration. False positive rate may differ in real-world deployment."
+}

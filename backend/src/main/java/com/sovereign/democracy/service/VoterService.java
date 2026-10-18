@@ -175,10 +175,15 @@ public class VoterService {
             );
         }
 
+        dto.setEmail(record.getComputedEmail());
+
         if (record.isHasRegisteredAccount()) {
             userAccountRepository.findByUsernameIgnoreCase(record.getVoterId()).ifPresent(acc -> {
                 dto.setUserAccountId(acc.getId());
                 dto.setAccountEnabled(acc.isEnabled());
+                if (acc.getRecoveryEmail() != null) {
+                    dto.setEmail(acc.getRecoveryEmail());
+                }
             });
         }
 

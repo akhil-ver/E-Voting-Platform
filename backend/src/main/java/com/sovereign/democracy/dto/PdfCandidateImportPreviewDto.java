@@ -14,8 +14,12 @@ public class PdfCandidateImportPreviewDto {
     private int duplicateCount;
     private List<PdfCandidateRowDto> rows = new ArrayList<>();
     private String notes;
+    private String rawExtractedText;
 
     public PdfCandidateImportPreviewDto() {}
+
+    public String getRawExtractedText() { return rawExtractedText; }
+    public void setRawExtractedText(String rawExtractedText) { this.rawExtractedText = rawExtractedText; }
 
     public Long getElectionId() { return electionId; }
     public void setElectionId(Long electionId) { this.electionId = electionId; }
