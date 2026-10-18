@@ -374,76 +374,173 @@ FIREBASE_MEASUREMENT_ID=G-QBR78BHWZY
 
 ## 🚀 Installation & Execution Guide
 
-### Prerequisites
-- **Java**: OpenJDK 21 or higher (`java -version`)
-- **MySQL**: MySQL 8.0 running on `localhost:3306` (`mysqladmin ping -u root`)
-- **Node.js**: Node v18+ and npm (`node -v && npm -v`)
+Follow these step-by-step instructions to run all dependencies and start the entire platform from your terminal.
 
 ---
 
-### Option 1: Run Sovereign Democracy Platform (Spring Boot + React + Besu Devnet)
+### Step 0: Check System Prerequisites
 
-#### Step 1: Start Blockchain Devnet & Deploy Smart Contract (Optional / Feature 2)
+Open your terminal and verify that all necessary runtimes are installed:
+
 ```bash
+# 1. Verify Java 21+ (Java 21 or Java 25)
+java -version
+
+# 2. Verify Node.js (v18+ or v20+) and npm
+node -v && npm -v
+
+# 3. Verify MySQL 8.0+ is running
+mysqladmin -u root -p ping
+# Should output: mysqld is alive
+```
+
+---
+
+### Step 1: Initialize MySQL Database
+
+Make sure MySQL is running on `localhost:3306`. Create the database if it doesn't already exist:
+
+```bash
+mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS sovereign_democracy CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+```
+
+> **Note on Database Credentials**:
+> By default, the local configuration in `backend/src/main/resources/application-local.properties` connects to:
+> - **URL**: `jdbc:mysql://localhost:3306/sovereign_democracy`
+> - **Username**: `root`
+> - **Password**: `Akhil@123` (override using environment variable `DB_PASSWORD="your_password"` if different).
+
+---
+
+### Step 2: (Terminal 1 - Optional) Start Local Blockchain Node
+
+If you want the local EVM blockchain ledger running for on-chain receipt verification:
+
+```bash
+# Open a new terminal tab/window
 cd blockchain
+
+# Install Hardhat dependencies (first time only)
 npm install
 
-# Start local Besu node via Docker Compose
-docker compose -f docker-compose.besu.yml up -d
-
-# Compile and deploy SovereignDemocracyVoting.sol
-npx hardhat compile
-npx hardhat run scripts/deploy.js --network localhost
+# Start local Hardhat JSON-RPC node on port 8545
+npx hardhat node
 ```
 
-#### Step 2: Start Spring Boot Backend
-In the `backend/` directory:
+*The node starts on `http://127.0.0.1:8545` with pre-funded accounts.*
+
+---
+
+### Step 3: (Terminal 2) Run Spring Boot Backend
+
+In a second terminal window, run the Spring Boot backend using the Maven wrapper:
+
 ```bash
+# Navigate to the backend directory
 cd backend
-./mvnw clean spring-boot:run
-```
-- Flyway automatically applies migrations `V1`, `V2`, `V3__secret_voting_keys.sql`, and `V4__blockchain_and_receipt_enhancements.sql`.
-- `DataSeeder` seeds `ADMIN-001`, 10 areas, and 500 test voter records.
-- Backend runs at `http://localhost:8080`.
 
-#### Step 3: Start React 18 Frontend
-In the `frontend/` directory:
+# Option A: Standard Run (with Firebase Audit Outbox and Local MySQL)
+FIREBASE_ENABLED=true ./mvnw spring-boot:run
+
+# Option B: Run with Gemini AI enabled (recommended for live civic insights)
+FIREBASE_ENABLED=true GEMINI_API_KEY="your-gemini-api-key" ./mvnw spring-boot:run
+```
+
+#### What happens automatically on backend startup:
+1. **Flyway Database Migrations**: Automatically applies migrations `V1` through `V8` in MySQL (`user_accounts`, `voter_records`, `areas`, `elections`, `candidates`, `ballot_records`, `vote_participations`, `vote_receipts`, `audit_logs`, `firebase_audit_outbox`, etc.).
+2. **Data Seeding (`DataSeeder`)**:
+   - **Administrator**: Initializes `ADMIN-001` with recovery email `akhilv.verma07@gmail.com` and password `admin123`.
+   - **Metropolitan Areas**: Seeds 10 areas (Mumbai, Delhi, Bengaluru, Pune, Hyderabad, Kolkata, Chennai, Ahmedabad, Jaipur, Lucknow).
+   - **500 Authorized Voter Records**: Seeds 50 voters per area with standard recovery emails (`nameaadharnumber@gmail.com`).
+   - **Single Active Account**: Pre-activates exactly 1 demo account in Mumbai: **`VOT-MUM-1001`** (password: `pass123`).
+   - **499 Ready-to-Register Citizens**: All other 499 citizens remain in `Ready to Sign Up` status ready for on-demand registration using their last 4 digits of Aadhaar.
+   - **10 Open Elections**: Opens 1 municipal council election per city with seeded candidates.
+   - **Firebase Connection**: Connects to Firebase project `evotingsystem-4c3a1` for outbox security audit streaming.
+3. **Tomcat Web Server**: Starts on **`http://localhost:8080`**.
+
+---
+
+### Step 4: (Terminal 3) Run React 18 + Vite Frontend
+
+In a third terminal window, start the frontend development server:
+
 ```bash
+# Navigate to the frontend directory
 cd frontend
+
+# Install frontend dependencies (first time only)
 npm install
+
+# Start Vite development server
 npm run dev
 ```
-- Frontend starts at `http://localhost:5173` (or `http://localhost:3000`).
-- Proxies `/api` calls directly to the Spring Boot backend on `localhost:8080`.
 
-#### Step 4: Run Automated Tests
+- The frontend application starts at: **`http://localhost:3000`** (or `http://localhost:5173`).
+- All `/api` requests are automatically proxied to the backend at `http://localhost:8080`.
+
+---
+
+### Step 5: Test & Verify the Application in Your Browser
+
+1. **Explore Areas & Voters Roster (`http://localhost:3000/areas`)**:
+   - View all 10 cities and their live election statuses.
+   - Select **Mumbai** to inspect the roster:
+     - See **Aarav Verma** (`VOT-MUM-1001`) with unmasked email `aaravverma2017@gmail.com` marked **Account Active**.
+     - See **Ananya Deshmukh** (`VOT-MUM-1002`) with unmasked email `ananyadeshmukh2034@gmail.com` marked **Ready to Sign Up**.
+     - Notice Aadhaar digits are hidden from public view with the **`Protected • Zero PII`** / **`Official Roll Verified`** badge.
+
+2. **Log In as Active Citizen Voter**:
+   - Click **Log In** &rarr; Enter:
+     - **Election ID / Username**: `VOT-MUM-1001`
+     - **Password**: `pass123`
+   - You will land on the **Personal Voter Dashboard** displaying the **Verified Citizen Electoral Roll Card** with:
+     - **Voter Name**: Aarav Verma
+     - **Father's Name**: Rajendra Verma
+     - **Mother's Name**: Geeta Verma
+     - **City / Area**: Mumbai
+     - **Assigned Recovery Email**: `aaravverma2017@gmail.com`
+
+3. **Register a New Citizen Account (On-Demand)**:
+   - Click **Register** (or click **Sign Up** next to `VOT-MUM-1002` on the roster).
+   - Enter **Election ID**: `VOT-MUM-1002`.
+   - Enter matching last 4 digits of Aadhaar: `2034` (notice placeholder is `0000`).
+   - Click **Verify** &rarr; The verified record card appears with full recovery email `ananyadeshmukh2034@gmail.com`.
+   - Set a new password (e.g. `MySecurePass@1`) and submit &rarr; You are automatically logged in!
+
+4. **Log In as Central Administrator**:
+   - Log out & click **Log In** &rarr; Enter:
+     - **Username**: `ADMIN-001`
+     - **Password**: `admin123`
+   - Access the **Administrator Command Center**:
+     - Manage election areas, candidates, and voter rolls.
+     - Inspect Aadhaar numbers (visible only to the admin).
+     - Import candidate nomination PDFs via PDFBox.
+     - Review live Firebase audit outbox telemetry and trigger outbox retries.
+     - Inspect AI civic intelligence and Isolation Forest anomaly telemetry.
+
+5. **Test Secure Password Reset (Forgot Password)**:
+   - On the login screen, click **Forgot Password?**.
+   - Enter `ADMIN-001` or `akhilv.verma07@gmail.com` (or `VOT-MUM-1001`).
+   - A secure single-use SHA-256 token link is generated via URL fragment hash delivery (`#token=...`).
+   - Follow the link to safely reset and update the password.
+
+---
+
+### Step 6: Automated Testing & Production Build Commands
+
 ```bash
-# Run all 33 Spring Boot unit and integration tests:
+# 1. Run all Spring Boot backend tests (including password reset & audit tests):
 cd backend
-./mvnw test
+./mvnw test -Dtest=PasswordResetAndSecurityAuditTest
 
-# Run all 7 Hardhat smart contract tests:
-cd ../blockchain
-npm test
-
-# Build frontend production bundle:
+# 2. Build the production React frontend bundle:
 cd ../frontend
 npm run build
+
+# 3. (Optional) Run Hardhat smart contract tests:
+cd ../blockchain
+npx hardhat test
 ```
-
----
-
-### Option 2: Run Full-Stack Node.js / Express Server (with Firebase Adapters)
-
-If running the Node.js Express + Vite server with Firebase / Firestore database adapters:
-```bash
-# In the root directory:
-npm install
-npm run dev
-```
-- Starts `tsx server.ts` at `http://localhost:3000`.
-- Connects to Firebase project `evotingsystem-4c3a1`.
-- Compiles via `npm run build` and type-checks via `npm run lint`.
 
 ---
 
