@@ -127,12 +127,31 @@ public class ElectionController {
     @GetMapping("/{id}/voter-participation")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<List<VoterParticipationDto>>> getVoterParticipation(
-            @PathVariable Long id,
+            @PathVariable String id,
+            @RequestParam(required = false) Long areaId,
             @RequestParam(required = false) String search,
             @RequestParam(defaultValue = "ALL") String status) {
 
-        List<VoterParticipationDto> list = voterParticipationService.getParticipationList(id, search, status);
-        return ResponseEntity.ok(ApiResponse.ok("Area voter participation retrieved", list));
+        Long electionId = null;
+        if (id != null && !id.equalsIgnoreCase("all") && !id.equals("0")) {
+            try {
+                electionId = Long.valueOf(id);
+            } catch (NumberFormatException ignored) {}
+        }
+
+        List<VoterParticipationDto> list = voterParticipationService.getParticipationList(electionId, areaId, search, status);
+        return ResponseEntity.ok(ApiResponse.ok("Voter participation retrieved", list));
+    }
+
+    @GetMapping("/voter-participation")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<List<VoterParticipationDto>>> getAllVoterParticipation(
+            @RequestParam(required = false) Long areaId,
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "ALL") String status) {
+
+        List<VoterParticipationDto> list = voterParticipationService.getParticipationList(null, areaId, search, status);
+        return ResponseEntity.ok(ApiResponse.ok("All voter participation retrieved", list));
     }
 
     /**

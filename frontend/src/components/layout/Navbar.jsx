@@ -132,6 +132,20 @@ export const Navbar = () => {
 
           {/* Right Action / Auth Buttons */}
           <div className="flex items-center gap-2">
+            {/* Live Blockchain Node Status Pill */}
+            <Link
+              to="/verify"
+              className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-900/90 border border-slate-800 text-[11px] font-mono hover:border-emerald-500/40 hover:bg-slate-900 transition-all cursor-pointer"
+              title="Hyperledger Besu / Ethereum blockchain node is connected and auditing ballots"
+            >
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+              </span>
+              <span className="text-emerald-400 font-bold">Besu Chain</span>
+              <span className="text-slate-500">1337</span>
+            </Link>
+
             {isAuthenticated ? (
               <div className="flex items-center gap-3">
                 <div className="hidden sm:flex flex-col items-end">

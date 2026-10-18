@@ -17,9 +17,38 @@ import java.util.Map;
 public class VotingController {
 
     private final VotingService votingService;
+    private final com.sovereign.democracy.service.SecretVotingKeyService secretVotingKeyService;
 
-    public VotingController(VotingService votingService) {
+    public VotingController(VotingService votingService,
+                            com.sovereign.democracy.service.SecretVotingKeyService secretVotingKeyService) {
         this.votingService = votingService;
+        this.secretVotingKeyService = secretVotingKeyService;
+    }
+
+    @PostMapping("/keys/generate/{electionId}")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
+    public ResponseEntity<ApiResponse<com.sovereign.democracy.dto.SecretVotingKeyDto>> generateKey(
+            @PathVariable Long electionId,
+            @RequestParam(value = "forceReissue", defaultValue = "false") boolean forceReissue,
+            Authentication authentication,
+            HttpServletRequest request) {
+
+        String username = authentication.getName();
+        com.sovereign.democracy.dto.SecretVotingKeyDto keyDto = secretVotingKeyService.issueOrReissueKey(
+                username, electionId, forceReissue, request.getRemoteAddr()
+        );
+        return ResponseEntity.ok(ApiResponse.ok("Secret voting key processed successfully", keyDto));
+    }
+
+    @GetMapping("/keys/status/{electionId}")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
+    public ResponseEntity<ApiResponse<com.sovereign.democracy.dto.SecretVotingKeyDto>> getKeyStatus(
+            @PathVariable Long electionId,
+            Authentication authentication) {
+
+        String username = authentication.getName();
+        com.sovereign.democracy.dto.SecretVotingKeyDto statusDto = secretVotingKeyService.getKeyStatus(username, electionId);
+        return ResponseEntity.ok(ApiResponse.ok("Secret voting key status retrieved", statusDto));
     }
 
     @PostMapping("/cast")
@@ -34,6 +63,7 @@ public class VotingController {
                 username,
                 requestPayload.getElectionId(),
                 requestPayload.getCandidateId(),
+                requestPayload.getSecretVotingKey(),
                 request.getRemoteAddr()
         );
 

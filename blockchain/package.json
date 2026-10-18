@@ -1,0 +1,16 @@
+{
+  "name": "sovereign-democracy-blockchain",
+  "version": "1.0.0",
+  "description": "Smart contracts and tests for Sovereign Democracy on-chain voting audit vault",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "deploy:local": "hardhat run scripts/deploy.js --network localhost",
+    "deploy:besu": "hardhat run scripts/deploy.js --network besu",
+    "node": "hardhat node"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "hardhat": "^2.22.2"
+  }
+}

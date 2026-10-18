@@ -43,4 +43,7 @@ public class DashboardStatsDto {
 
     public long getElectionsWithPublishedResults() { return electionsWithPublishedResults; }
     public void setElectionsWithPublishedResults(long electionsWithPublishedResults) { this.electionsWithPublishedResults = electionsWithPublishedResults; }
+
+    public long getPublishedElections() { return electionsWithPublishedResults; }
+    public void setPublishedElections(long publishedElections) { this.electionsWithPublishedResults = publishedElections; }
 }

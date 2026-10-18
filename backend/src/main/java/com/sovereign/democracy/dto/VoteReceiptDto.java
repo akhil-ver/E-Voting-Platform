@@ -107,4 +107,37 @@ public class VoteReceiptDto {
 
     public List<ElectionResultDto> getCandidateResults() { return candidateResults; }
     public void setCandidateResults(List<ElectionResultDto> candidateResults) { this.candidateResults = candidateResults; }
+
+    private String blockchainTxHash;
+    private String blockchainStatus;
+    private Long blockNumber;
+    private boolean blockchainVerified;
+    private String contractAddress;
+    private boolean tallyCommitmentVerified;
+    private String commitmentHash;
+    private String blockchainMessage;
+
+    public String getBlockchainTxHash() { return blockchainTxHash; }
+    public void setBlockchainTxHash(String blockchainTxHash) { this.blockchainTxHash = blockchainTxHash; }
+
+    public String getBlockchainStatus() { return blockchainStatus; }
+    public void setBlockchainStatus(String blockchainStatus) { this.blockchainStatus = blockchainStatus; }
+
+    public Long getBlockNumber() { return blockNumber; }
+    public void setBlockNumber(Long blockNumber) { this.blockNumber = blockNumber; }
+
+    public boolean isBlockchainVerified() { return blockchainVerified; }
+    public void setBlockchainVerified(boolean blockchainVerified) { this.blockchainVerified = blockchainVerified; }
+
+    public String getContractAddress() { return contractAddress; }
+    public void setContractAddress(String contractAddress) { this.contractAddress = contractAddress; }
+
+    public boolean isTallyCommitmentVerified() { return tallyCommitmentVerified; }
+    public void setTallyCommitmentVerified(boolean tallyCommitmentVerified) { this.tallyCommitmentVerified = tallyCommitmentVerified; }
+
+    public String getCommitmentHash() { return commitmentHash; }
+    public void setCommitmentHash(String commitmentHash) { this.commitmentHash = commitmentHash; }
+
+    public String getBlockchainMessage() { return blockchainMessage; }
+    public void setBlockchainMessage(String blockchainMessage) { this.blockchainMessage = blockchainMessage; }
 }

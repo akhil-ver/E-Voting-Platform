@@ -32,6 +32,9 @@ public class VotingService {
     private final VoteReceiptRepository voteReceiptRepository;
     private final ElectionResultRepository electionResultRepository;
     private final AuditLogService auditLogService;
+    private final SecretVotingKeyService secretVotingKeyService;
+    private final BlockchainService blockchainService;
+    private final BlockchainTransactionRepository blockchainTransactionRepository;
 
     public VotingService(UserAccountRepository userAccountRepository,
                          ElectionRepository electionRepository,
@@ -40,7 +43,10 @@ public class VotingService {
                          BallotRecordRepository ballotRecordRepository,
                          VoteReceiptRepository voteReceiptRepository,
                          ElectionResultRepository electionResultRepository,
-                         AuditLogService auditLogService) {
+                         AuditLogService auditLogService,
+                         SecretVotingKeyService secretVotingKeyService,
+                         BlockchainService blockchainService,
+                         BlockchainTransactionRepository blockchainTransactionRepository) {
         this.userAccountRepository = userAccountRepository;
         this.electionRepository = electionRepository;
         this.candidateRepository = candidateRepository;
@@ -49,10 +55,18 @@ public class VotingService {
         this.voteReceiptRepository = voteReceiptRepository;
         this.electionResultRepository = electionResultRepository;
         this.auditLogService = auditLogService;
+        this.secretVotingKeyService = secretVotingKeyService;
+        this.blockchainService = blockchainService;
+        this.blockchainTransactionRepository = blockchainTransactionRepository;
     }
 
     @Transactional
     public VoteReceiptDto castBallot(String username, Long electionId, Long candidateId, String clientIp) {
+        return castBallot(username, electionId, candidateId, null, clientIp);
+    }
+
+    @Transactional
+    public VoteReceiptDto castBallot(String username, Long electionId, Long candidateId, String secretVotingKey, String clientIp) {
         UserAccount user = userAccountRepository.findByUsernameIgnoreCase(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User account not found: " + username));
 
@@ -80,6 +94,9 @@ public class VotingService {
             throw new BadRequestException("Duplicate vote rejected: You have already cast your ballot in this election.");
         }
 
+        // 3b. Validate and Atomically Consume Secret Voting Key
+        secretVotingKeyService.validateAndConsumeKey(voter, election, secretVotingKey);
+
         // 4. Validate Candidate
         Candidate candidate = candidateRepository.findById(candidateId)
                 .orElseThrow(() -> new ResourceNotFoundException("Candidate not found with id: " + candidateId));
@@ -102,6 +119,17 @@ public class VotingService {
         // 7. Enforce Participation (Tracks that voter voted; ZERO candidate reference; retains their receipt token)
         VoteParticipation participation = new VoteParticipation(election, voter, receiptCode, ballotHash);
         voteParticipationRepository.save(participation);
+
+        // 7b. Submit anonymous ballot commitment to blockchain audit vault
+        BlockchainTransaction btx = blockchainService.recordBallotCommitment(election, ballotHash, receiptCode);
+        if (btx != null && btx.getTxHash() != null) {
+            savedReceipt.setBlockchainTxHash(btx.getTxHash());
+            savedReceipt.setBlockchainStatus(btx.getStatus());
+            savedReceipt.setBlockNumber(btx.getBlockNumber());
+            savedReceipt.setBallotCommitment(btx.getBallotCommitment());
+            savedReceipt.setNullifierHash(btx.getNullifierHash());
+            voteReceiptRepository.save(savedReceipt);
+        }
 
         // 8. Audit Log without choice leakage
         auditLogService.logAction(
@@ -137,6 +165,7 @@ public class VotingService {
                 null
         );
         dto.setVoteHash(ballotHash);
+        blockchainService.enrichWithBlockchainVerification(dto, savedReceipt);
         return dto;
     }
 
@@ -151,7 +180,7 @@ public class VotingService {
         return voteParticipationRepository.existsByElectionAndVoterRecord(election, user.getVoterRecord());
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public VoteReceiptDto getMyReceipt(String username, Long electionId) {
         UserAccount user = userAccountRepository.findByUsernameIgnoreCase(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + username));
@@ -167,7 +196,7 @@ public class VotingService {
         return buildDtoForParticipation(participation);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<VoteReceiptDto> getMyReceipts(String username) {
         UserAccount user = userAccountRepository.findByUsernameIgnoreCase(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + username));
@@ -229,10 +258,13 @@ public class VotingService {
                 null
         );
         dto.setVoteHash(voteHash);
+        voteReceiptRepository.findFirstByReceiptCodeOrderByIdDesc(receiptCode).ifPresent(vr ->
+                blockchainService.enrichWithBlockchainVerification(dto, vr)
+        );
         return dto;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public VoteReceiptDto verifyReceipt(String receiptCodeOrHash) {
         if (receiptCodeOrHash == null || receiptCodeOrHash.trim().isEmpty()) {
             throw new BadRequestException("Receipt code or cryptographic vote hash is required");
@@ -247,7 +279,22 @@ public class VotingService {
         String resolvedReceiptCode;
         String resolvedVoteHash = null;
 
-        Optional<VoteReceipt> receiptOpt = voteReceiptRepository.findByReceiptCode(clean.toUpperCase());
+        Optional<VoteReceipt> receiptOpt = voteReceiptRepository.findFirstByReceiptCodeOrderByIdDesc(clean.toUpperCase());
+        if (receiptOpt.isEmpty()) {
+            receiptOpt = voteReceiptRepository.findFirstByBallotCommitmentOrderByIdDesc(clean.toLowerCase());
+        }
+        if (receiptOpt.isEmpty()) {
+            receiptOpt = voteReceiptRepository.findFirstByBlockchainTxHashOrderByIdDesc(raw);
+        }
+        if (receiptOpt.isEmpty()) {
+            Optional<BlockchainTransaction> txLookup = blockchainTransactionRepository.findFirstByBallotCommitmentOrderByIdDesc(clean.toLowerCase());
+            if (txLookup.isEmpty()) {
+                txLookup = blockchainTransactionRepository.findFirstByTxHashOrderByIdDesc(raw);
+            }
+            if (txLookup.isPresent() && txLookup.get().getReceiptCode() != null) {
+                receiptOpt = voteReceiptRepository.findFirstByReceiptCodeOrderByIdDesc(txLookup.get().getReceiptCode());
+            }
+        }
 
         if (receiptOpt.isPresent()) {
             VoteReceipt receipt = receiptOpt.get();
@@ -274,7 +321,23 @@ public class VotingService {
                 resolvedVoteHash = ballot.getBallotHash();
                 resolvedReceiptCode = "RCP-" + resolvedVoteHash.substring(0, 16).toUpperCase();
             } else {
-                throw new ResourceNotFoundException("No valid vote receipt or cryptographic hash found for reference: " + raw);
+                // Check if user submitted a blockchain transaction reference directly
+                Optional<BlockchainTransaction> txOpt = blockchainTransactionRepository.findFirstByBallotCommitmentOrderByIdDesc(clean.toLowerCase());
+                if (txOpt.isEmpty()) {
+                    txOpt = blockchainTransactionRepository.findFirstByTxHashOrderByIdDesc(raw);
+                }
+                if (txOpt.isEmpty()) {
+                    txOpt = blockchainTransactionRepository.findFirstByReceiptCodeOrderByIdDesc(clean.toUpperCase());
+                }
+                if (txOpt.isPresent()) {
+                    BlockchainTransaction tx = txOpt.get();
+                    election = tx.getElection();
+                    status = ReceiptStatus.COUNTED;
+                    issuedAt = tx.getCreatedAt() != null ? tx.getCreatedAt() : LocalDateTime.now();
+                    resolvedReceiptCode = tx.getReceiptCode() != null ? tx.getReceiptCode() : "RCP-COMMITMENT";
+                } else {
+                    throw new ResourceNotFoundException("No valid vote receipt or cryptographic hash found for reference: " + raw);
+                }
             }
         }
 
@@ -344,6 +407,7 @@ public class VotingService {
                 candidateResults
         );
         dto.setVoteHash(resolvedVoteHash);
+        blockchainService.enrichWithBlockchainVerification(dto, receiptOpt.orElse(null));
         return dto;
     }
 

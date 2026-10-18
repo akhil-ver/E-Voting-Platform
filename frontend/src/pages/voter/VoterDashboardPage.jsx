@@ -37,25 +37,43 @@ export const VoterDashboardPage = () => {
     setIsLoading(true);
     setFeedback(null);
     try {
-      const [electionsRes, receiptsRes] = await Promise.all([
+      const results = await Promise.allSettled([
         axiosClient.get('/elections'),
         axiosClient.get('/voting/my-receipts'),
       ]);
 
-      const allElections = electionsRes.success && electionsRes.data ? electionsRes.data : [];
-      const userReceipts = receiptsRes.success && receiptsRes.data ? receiptsRes.data : [];
+      const electionsSettled = results[0];
+      const receiptsSettled = results[1];
+
+      let allElections = [];
+      if (electionsSettled.status === 'fulfilled' && electionsSettled.value?.success && electionsSettled.value?.data) {
+        allElections = electionsSettled.value.data;
+      }
+
+      let userReceipts = [];
+      if (receiptsSettled.status === 'fulfilled' && receiptsSettled.value?.success && receiptsSettled.value?.data) {
+        userReceipts = receiptsSettled.value.data;
+      }
 
       // Filter elections to only those relevant to user's assigned area
-      const areaElections = user?.areaName
+      const areaElections = (user?.areaName || user?.areaId)
         ? allElections.filter(
             (e) =>
-              e.areaName?.toLowerCase() === user.areaName?.toLowerCase() ||
-              e.areaId === user.areaId
+              (user?.areaId && (e.areaId === user.areaId || e.area?.id === user.areaId)) ||
+              (user?.areaName && (
+                e.areaName?.toLowerCase() === user.areaName?.toLowerCase() ||
+                e.area?.name?.toLowerCase() === user.areaName?.toLowerCase() ||
+                e.constituencyName?.toLowerCase() === user.areaName?.toLowerCase()
+              ))
           )
         : allElections;
 
       setElections(areaElections);
       setReceipts(userReceipts);
+
+      if (electionsSettled.status === 'rejected' && receiptsSettled.status === 'rejected') {
+        setFeedback({ type: 'error', message: 'Unable to retrieve voter telemetry from secure vault.' });
+      }
     } catch (err) {
       console.error('Failed to load dashboard data', err);
       setFeedback({ type: 'error', message: 'Unable to retrieve voter telemetry from secure vault.' });

@@ -26,13 +26,14 @@ import {
 import { IDatabaseService, IStorageService } from '../../../services/interfaces';
 
 export const defaultFirebaseConfig = {
-  apiKey: process.env.FIREBASE_API_KEY || "AIzaSyBcRm2Wm2upczEgTAZxInU4kKg-5FU6VXg",
-  authDomain: process.env.FIREBASE_AUTH_DOMAIN || "evotingsystem-99e8a.firebaseapp.com",
-  projectId: process.env.FIREBASE_PROJECT_ID || "evotingsystem-99e8a",
-  storageBucket: process.env.FIREBASE_STORAGE_BUCKET || "evotingsystem-99e8a.firebasestorage.app",
-  messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID || "955499184767",
-  appId: process.env.FIREBASE_APP_ID || "1:955499184767:web:5587f943527f80f485f54a",
-  measurementId: process.env.FIREBASE_MEASUREMENT_ID || "G-F0PCZVN7M1",
+  apiKey: process.env.FIREBASE_API_KEY || "AIzaSyCJGa3s2WAM6q3Gndw1-KPEQc4ZhoP_vZg",
+  authDomain: process.env.FIREBASE_AUTH_DOMAIN || "evotingsystem-4c3a1.firebaseapp.com",
+  databaseURL: process.env.FIREBASE_DATABASE_URL || "https://evotingsystem-4c3a1-default-rtdb.firebaseio.com",
+  projectId: process.env.FIREBASE_PROJECT_ID || "evotingsystem-4c3a1",
+  storageBucket: process.env.FIREBASE_STORAGE_BUCKET || "evotingsystem-4c3a1.firebasestorage.app",
+  messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID || "746291117510",
+  appId: process.env.FIREBASE_APP_ID || "1:746291117510:web:9ecbb9d4d7d4f504d986c7",
+  measurementId: process.env.FIREBASE_MEASUREMENT_ID || "G-QBR78BHWZY",
 };
 
 function withTimeout<T>(promise: Promise<T>, ms = 2500): Promise<T> {
@@ -181,7 +182,7 @@ export class FirebaseFirestoreService implements IDatabaseService {
       return {
         status: 'HEALTHY',
         latencyMs: Date.now() - start,
-        provider: 'firebase-firestore (evotingsystem-99e8a)',
+        provider: 'firebase-firestore (evotingsystem-4c3a1)',
       };
     } catch {
       return {

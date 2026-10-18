@@ -17,9 +17,12 @@ import java.util.Map;
 public class CandidateController {
 
     private final CandidateService candidateService;
+    private final com.sovereign.democracy.service.PdfCandidateImportService pdfCandidateImportService;
 
-    public CandidateController(CandidateService candidateService) {
+    public CandidateController(CandidateService candidateService,
+                               com.sovereign.democracy.service.PdfCandidateImportService pdfCandidateImportService) {
         this.candidateService = candidateService;
+        this.pdfCandidateImportService = pdfCandidateImportService;
     }
 
     @GetMapping("/election/{electionId}")
@@ -90,5 +93,27 @@ public class CandidateController {
         candidateService.deleteCandidate(id, adminUsername, request.getRemoteAddr());
 
         return ResponseEntity.ok(ApiResponse.ok("Candidate deleted successfully", null));
+    }
+
+    @PostMapping(value = "/import-pdf/preview", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<com.sovereign.democracy.dto.PdfCandidateImportPreviewDto>> previewPdfImport(
+            @RequestParam("electionId") Long electionId,
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+        com.sovereign.democracy.dto.PdfCandidateImportPreviewDto preview = pdfCandidateImportService.previewPdfImport(electionId, file);
+        return ResponseEntity.ok(ApiResponse.ok("PDF candidate extraction preview generated", preview));
+    }
+
+    @PostMapping("/import-pdf/confirm")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<com.sovereign.democracy.dto.PdfCandidateImportResultDto>> confirmPdfImport(
+            @RequestBody com.sovereign.democracy.dto.PdfCandidateImportConfirmRequest request,
+            Authentication authentication,
+            HttpServletRequest servletRequest) {
+        String adminUsername = authentication != null ? authentication.getName() : "ADMIN-001";
+        com.sovereign.democracy.dto.PdfCandidateImportResultDto result = pdfCandidateImportService.confirmImport(
+                request, adminUsername, servletRequest.getRemoteAddr()
+        );
+        return ResponseEntity.ok(ApiResponse.ok("Candidates imported successfully from PDF", result));
     }
 }

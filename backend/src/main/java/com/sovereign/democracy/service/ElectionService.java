@@ -32,6 +32,7 @@ public class ElectionService {
     private final VoteReceiptRepository voteReceiptRepository;
     private final ElectionResultRepository electionResultRepository;
     private final AuditLogService auditLogService;
+    private final BlockchainService blockchainService;
 
     public ElectionService(ElectionRepository electionRepository,
                            AreaRepository areaRepository,
@@ -41,7 +42,8 @@ public class ElectionService {
                            BallotRecordRepository ballotRecordRepository,
                            VoteReceiptRepository voteReceiptRepository,
                            ElectionResultRepository electionResultRepository,
-                           AuditLogService auditLogService) {
+                           AuditLogService auditLogService,
+                           BlockchainService blockchainService) {
         this.electionRepository = electionRepository;
         this.areaRepository = areaRepository;
         this.candidateRepository = candidateRepository;
@@ -51,6 +53,7 @@ public class ElectionService {
         this.voteReceiptRepository = voteReceiptRepository;
         this.electionResultRepository = electionResultRepository;
         this.auditLogService = auditLogService;
+        this.blockchainService = blockchainService;
     }
 
     @Transactional(readOnly = true)
@@ -234,6 +237,18 @@ public class ElectionService {
 
         List<ElectionResult> savedResults = electionResultRepository.saveAll(resultsToSave);
 
+        // Publish tally commitment on-chain
+        StringBuilder sb = new StringBuilder("ELECTION:" + election.getId() + ":TALLY:");
+        for (ElectionResult r : savedResults) {
+            sb.append(r.getCandidate().getId()).append("=").append(r.getVoteCount()).append(";");
+        }
+        String tallyHash = sha256(sb.toString());
+        String txHash = blockchainService.publishTallyOnChain(election, tallyHash, totalBallots, "/api/elections/" + election.getId() + "/results");
+        if (txHash != null) {
+            election.setTallyTxHash(txHash);
+            election.setTallyHash(tallyHash);
+        }
+
         election.setStatus(ElectionStatus.RESULT_DECLARED);
         electionRepository.save(election);
 
@@ -364,5 +379,15 @@ public class ElectionService {
                 totalEligibleVoters,
                 votesCast
         );
+    }
+
+    private String sha256(String input) {
+        try {
+            java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] encodedhash = digest.digest(input.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return java.util.HexFormat.of().formatHex(encodedhash);
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new RuntimeException("SHA-256 unavailable", e);
+        }
     }
 }

@@ -96,6 +96,18 @@ public class Election {
     public LocalDateTime getClosureTimestamp() { return closureTimestamp; }
     public void setClosureTimestamp(LocalDateTime closureTimestamp) { this.closureTimestamp = closureTimestamp; }
 
+    @Column(name = "tally_tx_hash", length = 66)
+    private String tallyTxHash;
+
+    @Column(name = "tally_hash", length = 66)
+    private String tallyHash;
+
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
+
+    public String getTallyTxHash() { return tallyTxHash; }
+    public void setTallyTxHash(String tallyTxHash) { this.tallyTxHash = tallyTxHash; }
+
+    public String getTallyHash() { return tallyHash; }
+    public void setTallyHash(String tallyHash) { this.tallyHash = tallyHash; }
 }

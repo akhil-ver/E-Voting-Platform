@@ -10,7 +10,23 @@ import java.util.Optional;
 
 @Repository
 public interface VoteReceiptRepository extends JpaRepository<VoteReceipt, Long> {
-    Optional<VoteReceipt> findByReceiptCode(String receiptCode);
+    Optional<VoteReceipt> findFirstByReceiptCodeOrderByIdDesc(String receiptCode);
+    Optional<VoteReceipt> findFirstByBallotCommitmentOrderByIdDesc(String ballotCommitment);
+    Optional<VoteReceipt> findFirstByBlockchainTxHashOrderByIdDesc(String blockchainTxHash);
+
+    default Optional<VoteReceipt> findByReceiptCode(String receiptCode) {
+        return findFirstByReceiptCodeOrderByIdDesc(receiptCode);
+    }
+
+    default Optional<VoteReceipt> findByBallotCommitment(String ballotCommitment) {
+        return findFirstByBallotCommitmentOrderByIdDesc(ballotCommitment);
+    }
+
+    default Optional<VoteReceipt> findByBlockchainTxHash(String blockchainTxHash) {
+        return findFirstByBlockchainTxHashOrderByIdDesc(blockchainTxHash);
+    }
+
+    List<VoteReceipt> findAllByReceiptCode(String receiptCode);
     List<VoteReceipt> findByElection(Election election);
     boolean existsByReceiptCode(String receiptCode);
     void deleteByElection(Election election);

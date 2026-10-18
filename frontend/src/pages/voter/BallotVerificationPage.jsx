@@ -14,6 +14,7 @@ import {
   Award,
   BarChart3,
   Copy,
+  Layers,
 } from 'lucide-react';
 
 export const BallotVerificationPage = () => {
@@ -302,6 +303,109 @@ export const BallotVerificationPage = () => {
                 <span className="font-mono text-slate-300">
                   {new Date(result.issuedAt).toLocaleString()}
                 </span>
+              </div>
+            </div>
+
+            {/* Blockchain Audit & On-Chain Proof Card (Feature 4) */}
+            <div className="rounded-2xl border border-cyan-500/30 bg-[#0B1525] p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="h-9 w-9 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 flex items-center justify-center shrink-0">
+                    <Layers className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-white text-sm flex items-center gap-2">
+                      <span>Ethereum / Besu Blockchain Audit</span>
+                      {result.blockchainVerified ? (
+                        <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/40 font-bold flex items-center gap-1">
+                          <CheckCircle2 className="h-3 w-3" />
+                          <span>AUDITED ON-CHAIN</span>
+                        </span>
+                      ) : (
+                        <span className="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full border border-slate-700 font-mono">
+                          {result.blockchainStatus || 'PENDING'}
+                        </span>
+                      )}
+                    </h4>
+                    <p className="text-[11px] text-slate-400">
+                      Independent public blockchain audit &amp; ballot commitment verifiability
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2 text-xs">
+                {result.blockchainTxHash ? (
+                  <div className="flex flex-col sm:flex-row justify-between py-1.5 border-b border-slate-800/80 gap-2 items-start sm:items-center">
+                    <span className="text-slate-400 font-semibold flex items-center gap-1.5">
+                      <span className="h-1.5 w-1.5 rounded-full bg-cyan-400" />
+                      Transaction Hash:
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold text-cyan-300 text-[11px] break-all select-all">
+                        {result.blockchainTxHash}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => copyText(result.blockchainTxHash)}
+                        className="px-2 py-0.5 rounded-lg bg-cyan-950 text-cyan-300 border border-cyan-500/30 text-[10px] font-bold cursor-pointer shrink-0"
+                      >
+                        Copy
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col sm:flex-row justify-between py-1.5 border-b border-slate-800/80 gap-1">
+                    <span className="text-slate-400 font-semibold">Transaction Status:</span>
+                    <span className="font-mono text-amber-300">
+                      Pending Batch On-Chain Synchronization
+                    </span>
+                  </div>
+                )}
+
+                {result.blockNumber && (
+                  <div className="flex flex-col sm:flex-row justify-between py-1.5 border-b border-slate-800/80 gap-1">
+                    <span className="text-slate-400 font-semibold">Block Number:</span>
+                    <span className="font-mono font-bold text-slate-200">
+                      #{result.blockNumber}
+                    </span>
+                  </div>
+                )}
+
+                {result.contractAddress && (
+                  <div className="flex flex-col sm:flex-row justify-between py-1.5 border-b border-slate-800/80 gap-1 items-start sm:items-center">
+                    <span className="text-slate-400 font-semibold">Smart Contract Address:</span>
+                    <span className="font-mono text-[11px] text-slate-300 break-all select-all">
+                      {result.contractAddress}
+                    </span>
+                  </div>
+                )}
+
+                {result.commitmentHash && (
+                  <div className="flex flex-col sm:flex-row justify-between py-1.5 border-b border-slate-800/80 gap-1 items-start sm:items-center">
+                    <span className="text-slate-400 font-semibold">On-Chain Commitment:</span>
+                    <span className="font-mono text-[11px] text-cyan-400/90 break-all select-all">
+                      {result.commitmentHash}
+                    </span>
+                  </div>
+                )}
+
+                {result.blockchainMessage && (
+                  <div className="pt-2">
+                    <p className="text-[11px] text-slate-300 bg-slate-900/80 p-2.5 rounded-xl border border-slate-800 leading-relaxed">
+                      💡 {result.blockchainMessage}
+                    </p>
+                  </div>
+                )}
+
+                {result.tallyCommitmentVerified && (
+                  <div className="mt-2 p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-[11px] text-emerald-200 flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                    <span>
+                      Certified Final Tally Commitment verified on-chain against published results.
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 

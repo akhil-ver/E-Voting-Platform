@@ -22,6 +22,7 @@ import {
   Filter,
   Star,
   Info,
+  Key,
 } from 'lucide-react';
 
 export const ElectionsPage = () => {
@@ -39,6 +40,12 @@ export const ElectionsPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedback, setFeedback] = useState(null);
   const [copiedField, setCopiedField] = useState(null);
+
+  // Secret Voting Key state
+  const [secretKeyInput, setSecretKeyInput] = useState('');
+  const [keyStatus, setKeyStatus] = useState(null);
+  const [generatedRawKey, setGeneratedRawKey] = useState(null);
+  const [isGeneratingKey, setIsGeneratingKey] = useState(false);
 
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('');
@@ -111,6 +118,8 @@ export const ElectionsPage = () => {
     setSelectedCandidateId(null);
     setVoteReceipt(null);
     setFeedback(null);
+    setSecretKeyInput('');
+    setGeneratedRawKey(null);
 
     // Fetch Candidates
     try {
@@ -122,7 +131,7 @@ export const ElectionsPage = () => {
       console.error('Failed to load candidates', err);
     }
 
-    // If authenticated voter, check if already voted
+    // If authenticated voter, check if already voted and get secret key status
     if (isAuthenticated && election) {
       try {
         const vRes = await axiosClient.get(`/voting/has-voted/${election.id}`);
@@ -152,6 +161,16 @@ export const ElectionsPage = () => {
       } catch (err) {
         setHasVoted(false);
       }
+
+      // Fetch Secret Key Status
+      try {
+        const kRes = await axiosClient.get(`/voting/keys/status/${election.id}`);
+        if (kRes.success && kRes.data) {
+          setKeyStatus(kRes.data);
+        }
+      } catch (kErr) {
+        setKeyStatus(null);
+      }
     }
   };
 
@@ -159,15 +178,51 @@ export const ElectionsPage = () => {
     loadData();
   }, [isAuthenticated, location.search]);
 
+  // Handle Secret Key Generation or Reissuance
+  const handleGenerateKey = async (forceReissue = false) => {
+    if (!selectedElection) return;
+    setIsGeneratingKey(true);
+    setFeedback(null);
+    try {
+      const res = await axiosClient.post(
+        `/voting/keys/generate/${selectedElection.id}?forceReissue=${forceReissue}`
+      );
+      if (res.success && res.data) {
+        setKeyStatus(res.data);
+        if (res.data.rawKey) {
+          setGeneratedRawKey(res.data.rawKey);
+          setSecretKeyInput(res.data.rawKey);
+        }
+        setFeedback({
+          type: 'success',
+          message: res.data.message || 'Secret voting key processed successfully.',
+        });
+      }
+    } catch (err) {
+      setFeedback({ type: 'error', message: err.message || 'Failed to generate secret voting key.' });
+    } finally {
+      setIsGeneratingKey(false);
+    }
+  };
+
   // Handle Ballot Cast
   const handleCastVote = async () => {
     if (!selectedCandidateId || !selectedElection) return;
+    if (!secretKeyInput.trim()) {
+      setFeedback({
+        type: 'error',
+        message: 'A valid Secret Voting Key is required before your confidential ballot can be cast.',
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     setFeedback(null);
     try {
       const res = await axiosClient.post('/voting/cast', {
         electionId: selectedElection.id,
         candidateId: selectedCandidateId,
+        secretVotingKey: secretKeyInput.trim(),
       });
       if (res.success && res.data) {
         setVoteReceipt(res.data);
@@ -781,6 +836,85 @@ export const ElectionsPage = () => {
                   })}
                 </div>
               </div>
+
+              {/* Secret Voting Key Verification Card (Feature 1) */}
+              {isEligibleToVote && (
+                <div className="rounded-2xl border border-cyan-500/30 bg-[#0B1522] p-5 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+                        <Key className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-white text-sm flex items-center gap-2">
+                          <span>Election Secret Voting Key</span>
+                          <span className="text-[10px] bg-cyan-500/10 text-cyan-400 px-2 py-0.5 rounded-full border border-cyan-500/20 font-mono">
+                            {keyStatus?.status || 'NOT_ISSUED'}
+                          </span>
+                        </h4>
+                        <p className="text-[11px] text-slate-400">
+                          {keyStatus?.keyPrefix
+                            ? `Active key prefix: ${keyStatus.keyPrefix}...`
+                            : 'An election-specific secret voting key is required to cast your confidential ballot.'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={isGeneratingKey}
+                        onClick={() => handleGenerateKey(Boolean(keyStatus?.keyPrefix))}
+                        className="px-3.5 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-300 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                      >
+                        <Key className="h-3.5 w-3.5" />
+                        <span>{keyStatus?.keyPrefix ? 'Reissue New Key' : 'Generate Secret Key'}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Display Raw Key Alert upon generation */}
+                  {generatedRawKey && (
+                    <div className="rounded-xl border border-amber-500/40 bg-amber-950/30 p-4 space-y-2 animate-fadeIn">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-amber-300">
+                          🔑 Your Generated Secret Voting Key (Copy and save now):
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => copyText(generatedRawKey, 'SECRET_KEY')}
+                          className="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 text-xs font-semibold flex items-center gap-1 border border-amber-500/30 cursor-pointer"
+                        >
+                          <Copy className="h-3 w-3" />
+                          <span>{copiedField === 'SECRET_KEY' ? 'Copied!' : 'Copy Key'}</span>
+                        </button>
+                      </div>
+                      <div className="p-2.5 rounded-lg bg-black/60 font-mono text-sm font-bold text-white tracking-widest text-center border border-amber-500/30 select-all">
+                        {generatedRawKey}
+                      </div>
+                      <p className="text-[10px] text-amber-300/80">
+                        ⚠️ High-entropy one-time credential. Stored only as a cryptographic salted hash on the server. Will not be shown again!
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Secret Key Input Box */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-300 block">
+                      Enter Secret Voting Key:
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={secretKeyInput}
+                        onChange={(e) => setSecretKeyInput(e.target.value)}
+                        placeholder="SVK-XXXX-XXXX-XXXX-XXXX"
+                        className="w-full rounded-xl bg-slate-900 border border-slate-700 px-4 py-2.5 font-mono text-sm text-white placeholder-slate-500 focus:border-cyan-400 focus:outline-none focus:ring-1 focus:ring-cyan-400"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Cast Ballot Submission Button */}
               {selectedElection.status === 'OPEN' && !hasVoted && (

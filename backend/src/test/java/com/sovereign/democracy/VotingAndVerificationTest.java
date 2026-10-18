@@ -97,8 +97,15 @@ public class VotingAndVerificationTest {
         Map<?, ?> loginData = (Map<?, ?>) loginMap.get("data");
         String voterToken = "Bearer " + loginData.get("token");
 
-        // 1. Cast Ballot successfully
-        CastVoteRequest voteReq = new CastVoteRequest(election.getId(), selectedCandidate.getId());
+        // 1a. Generate secret voting key
+        MvcResult keyRes = mockMvc.perform(post("/api/voting/keys/generate/" + election.getId())
+                        .header("Authorization", voterToken))
+                .andExpect(status().isOk())
+                .andReturn();
+        String secretKey = (String) ((Map<?, ?>) objectMapper.readValue(keyRes.getResponse().getContentAsString(), Map.class).get("data")).get("rawKey");
+
+        // 1b. Cast Ballot successfully
+        CastVoteRequest voteReq = new CastVoteRequest(election.getId(), selectedCandidate.getId(), secretKey);
         MvcResult voteRes = mockMvc.perform(post("/api/voting/cast")
                         .header("Authorization", voterToken)
                         .contentType(MediaType.APPLICATION_JSON)

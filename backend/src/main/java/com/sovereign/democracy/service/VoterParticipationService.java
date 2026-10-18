@@ -39,58 +39,120 @@ public class VoterParticipationService {
 
     @Transactional(readOnly = true)
     public List<VoterParticipationDto> getParticipationList(Long electionId, String search, String statusFilter) {
-        Election election = electionRepository.findById(electionId)
-                .orElseThrow(() -> new ResourceNotFoundException("Election not found with id: " + electionId));
+        return getParticipationList(electionId, null, search, statusFilter);
+    }
 
-        // 1. Fetch all voters for the election's area
-        List<VoterRecord> eligibleVoters = voterRecordRepository.findByArea(election.getArea());
+    @Transactional(readOnly = true)
+    public List<VoterParticipationDto> getParticipationList(Long electionId, Long areaId, String search, String statusFilter) {
+        if (electionId != null && electionId > 0) {
+            Election election = electionRepository.findById(electionId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Election not found with id: " + electionId));
 
-        // 2. Fetch participation map (voter_record_id -> voted_at)
-        List<VoteParticipation> participations = voteParticipationRepository.findByElection(election);
-        Map<Long, LocalDateTime> participationMap = new HashMap<>();
-        for (VoteParticipation vp : participations) {
-            participationMap.put(vp.getVoterRecord().getId(), vp.getVotedAt());
+            // Fetch voters for election's area or specific areaId
+            List<VoterRecord> eligibleVoters = (areaId != null && areaId > 0)
+                    ? voterRecordRepository.findByAreaId(areaId)
+                    : voterRecordRepository.findByArea(election.getArea());
+
+            List<VoteParticipation> participations = voteParticipationRepository.findByElection(election);
+            Map<Long, LocalDateTime> participationMap = new HashMap<>();
+            for (VoteParticipation vp : participations) {
+                participationMap.put(vp.getVoterRecord().getId(), vp.getVotedAt());
+            }
+
+            return eligibleVoters.stream()
+                    .map(v -> {
+                        boolean hasVoted = participationMap.containsKey(v.getId());
+                        String status = hasVoted ? "VOTED" : "NOT_VOTED";
+                        LocalDateTime votedAt = participationMap.get(v.getId());
+
+                        return new VoterParticipationDto(
+                                v.getId(),
+                                v.getVoterId(),
+                                v.getFullName(),
+                                v.getFatherName(),
+                                v.getMotherName(),
+                                v.getAadhaarLast4(),
+                                v.getArea().getName(),
+                                v.isHasRegisteredAccount(),
+                                status,
+                                votedAt,
+                                election.getId(),
+                                election.getElectionCode(),
+                                election.getName()
+                        );
+                    })
+                    .filter(dto -> filterDto(dto, search, statusFilter))
+                    .collect(Collectors.toList());
+        } else {
+            // ALL Elections / ALL Areas mode
+            List<VoterRecord> eligibleVoters = (areaId != null && areaId > 0)
+                    ? voterRecordRepository.findByAreaId(areaId)
+                    : voterRecordRepository.findAll();
+
+            List<Election> allElections = electionRepository.findAll();
+            Map<Long, Election> areaElectionMap = new HashMap<>();
+            for (Election e : allElections) {
+                if (e.getArea() != null) {
+                    areaElectionMap.putIfAbsent(e.getArea().getId(), e);
+                }
+            }
+
+            List<VoteParticipation> allParticipations = voteParticipationRepository.findAll();
+            Map<Long, VoteParticipation> voterParticipationMap = new HashMap<>();
+            for (VoteParticipation vp : allParticipations) {
+                voterParticipationMap.put(vp.getVoterRecord().getId(), vp);
+            }
+
+            return eligibleVoters.stream()
+                    .map(v -> {
+                        VoteParticipation vp = voterParticipationMap.get(v.getId());
+                        boolean hasVoted = vp != null;
+                        String status = hasVoted ? "VOTED" : "NOT_VOTED";
+                        LocalDateTime votedAt = hasVoted ? vp.getVotedAt() : null;
+
+                        Election el = (hasVoted && vp.getElection() != null)
+                                ? vp.getElection()
+                                : areaElectionMap.get(v.getArea().getId());
+
+                        Long elId = el != null ? el.getId() : 0L;
+                        String elCode = el != null ? el.getElectionCode() : "ALL-AREAS";
+                        String elName = el != null ? el.getName() : "General Roll (" + v.getArea().getName() + ")";
+
+                        return new VoterParticipationDto(
+                                v.getId(),
+                                v.getVoterId(),
+                                v.getFullName(),
+                                v.getFatherName(),
+                                v.getMotherName(),
+                                v.getAadhaarLast4(),
+                                v.getArea().getName(),
+                                v.isHasRegisteredAccount(),
+                                status,
+                                votedAt,
+                                elId,
+                                elCode,
+                                elName
+                        );
+                    })
+                    .filter(dto -> filterDto(dto, search, statusFilter))
+                    .collect(Collectors.toList());
         }
+    }
 
-        // 3. Transform to DTO with zero candidate choice knowledge
-        return eligibleVoters.stream()
-                .map(v -> {
-                    boolean hasVoted = participationMap.containsKey(v.getId());
-                    String status = hasVoted ? "VOTED" : "NOT_VOTED";
-                    LocalDateTime votedAt = participationMap.get(v.getId());
-
-                    return new VoterParticipationDto(
-                            v.getId(),
-                            v.getVoterId(),
-                            v.getFullName(),
-                            v.getFatherName(),
-                            v.getMotherName(),
-                            v.getAadhaarLast4(),
-                            v.getArea().getName(),
-                            v.isHasRegisteredAccount(),
-                            status,
-                            votedAt,
-                            election.getId(),
-                            election.getElectionCode(),
-                            election.getName()
-                    );
-                })
-                .filter(dto -> {
-                    // Filter by search
-                    if (search != null && !search.trim().isEmpty()) {
-                        String s = search.trim().toLowerCase();
-                        boolean matchId = dto.getVoterId().toLowerCase().contains(s);
-                        boolean matchName = dto.getFullName().toLowerCase().contains(s);
-                        if (!matchId && !matchName) return false;
-                    }
-                    // Filter by status
-                    if (statusFilter != null && !statusFilter.equalsIgnoreCase("ALL")) {
-                        if (!dto.getParticipationStatus().equalsIgnoreCase(statusFilter)) {
-                            return false;
-                        }
-                    }
-                    return true;
-                })
-                .collect(Collectors.toList());
+    private boolean filterDto(VoterParticipationDto dto, String search, String statusFilter) {
+        if (search != null && !search.trim().isEmpty()) {
+            String s = search.trim().toLowerCase();
+            boolean matchId = dto.getVoterId() != null && dto.getVoterId().toLowerCase().contains(s);
+            boolean matchName = dto.getFullName() != null && dto.getFullName().toLowerCase().contains(s);
+            boolean matchArea = dto.getAreaName() != null && dto.getAreaName().toLowerCase().contains(s);
+            boolean matchElection = dto.getElectionCode() != null && dto.getElectionCode().toLowerCase().contains(s);
+            if (!matchId && !matchName && !matchArea && !matchElection) return false;
+        }
+        if (statusFilter != null && !statusFilter.equalsIgnoreCase("ALL")) {
+            if (!dto.getParticipationStatus().equalsIgnoreCase(statusFilter)) {
+                return false;
+            }
+        }
+        return true;
     }
 }

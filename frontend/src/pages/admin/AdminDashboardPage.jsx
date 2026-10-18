@@ -30,6 +30,11 @@ import {
   RotateCcw,
   UserX,
   Ban,
+  FileText,
+  Layers,
+  Cpu,
+  Key,
+  ExternalLink,
 } from 'lucide-react';
 
 export const AdminDashboardPage = () => {
@@ -56,6 +61,78 @@ export const AdminDashboardPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [feedback, setFeedback] = useState(null);
 
+  // Blockchain & Smart Contract Audit State
+  const [blockchainData, setBlockchainData] = useState(null);
+  const [isReconciling, setIsReconciling] = useState(false);
+  const [reconcileResult, setReconcileResult] = useState(null);
+  const [isBlockchainLoading, setIsBlockchainLoading] = useState(false);
+
+  const fetchBlockchainHealth = async () => {
+    setIsBlockchainLoading(true);
+    try {
+      const res = await axiosClient.get('/blockchain/health');
+      if (res.success && res.data) {
+        setBlockchainData(res.data);
+      }
+    } catch (err) {
+      // Node offline
+    } finally {
+      setIsBlockchainLoading(false);
+    }
+  };
+
+  const handleReconcileBlockchain = async () => {
+    setIsReconciling(true);
+    setReconcileResult(null);
+    try {
+      const res = await axiosClient.post('/blockchain/reconcile');
+      if (res.success) {
+        setReconcileResult(res.data);
+        setFeedback({
+          type: 'success',
+          message: `Blockchain reconciliation complete: ${res.data?.reconciledCount ?? 0} transaction(s) synchronized on-chain.`,
+        });
+        fetchBlockchainHealth();
+      }
+    } catch (err) {
+      setFeedback({
+        type: 'error',
+        message: 'Reconciliation failed: ' + err.message,
+      });
+    } finally {
+      setIsReconciling(false);
+    }
+  };
+
+  const [showResetBlockchainModal, setShowResetBlockchainModal] = useState(false);
+  const [isResettingBlockchain, setIsResettingBlockchain] = useState(false);
+  const [resetRedeploy, setResetRedeploy] = useState(false);
+  const [resetClearHistory, setResetClearHistory] = useState(true);
+
+  const handleResetBlockchain = async () => {
+    setIsResettingBlockchain(true);
+    try {
+      const res = await axiosClient.post(
+        `/blockchain/reset?redeploy=${resetRedeploy}&clearHistory=${resetClearHistory}`
+      );
+      if (res.success) {
+        setFeedback({
+          type: 'success',
+          message: `Blockchain block height successfully reset to ${res.data?.blockHeight ?? 0}! EVM ledger restarted from block #${res.data?.blockHeight ?? 0}.`,
+        });
+        setShowResetBlockchainModal(false);
+        fetchBlockchainHealth();
+      }
+    } catch (err) {
+      setFeedback({
+        type: 'error',
+        message: 'Reset failed: ' + err.message,
+      });
+    } finally {
+      setIsResettingBlockchain(false);
+    }
+  };
+
   // Citizen / User Accounts Management
   const [usersList, setUsersList] = useState([]);
   const [usersSearch, setUsersSearch] = useState('');
@@ -63,8 +140,12 @@ export const AdminDashboardPage = () => {
   const [isUserActionLoading, setIsUserActionLoading] = useState(false);
 
   // Filters
+  const [participationElectionId, setParticipationElectionId] = useState('ALL');
+  const [participationAreaFilter, setParticipationAreaFilter] = useState('ALL');
   const [participationSearch, setParticipationSearch] = useState('');
   const [participationStatusFilter, setParticipationStatusFilter] = useState('ALL'); // 'ALL' | 'VOTED' | 'NOT_VOTED'
+  const [voterRollAreaFilter, setVoterRollAreaFilter] = useState('ALL');
+  const [voterRollSearch, setVoterRollSearch] = useState('');
 
   // Modals
   const [showAddElectionModal, setShowAddElectionModal] = useState(false);
@@ -74,6 +155,12 @@ export const AdminDashboardPage = () => {
   const [showAddAreaModal, setShowAddAreaModal] = useState(false);
   const [showAddVoterModal, setShowAddVoterModal] = useState(false);
   const [showImportCsvModal, setShowImportCsvModal] = useState(false);
+  const [showImportPdfModal, setShowImportPdfModal] = useState(false);
+  const [pdfFile, setPdfFile] = useState(null);
+  const [isPdfExtracting, setIsPdfExtracting] = useState(false);
+  const [pdfPreview, setPdfPreview] = useState(null);
+  const [isPdfImporting, setIsPdfImporting] = useState(false);
+  const [pdfImportResult, setPdfImportResult] = useState(null);
   const [showCandidateValidationModal, setShowCandidateValidationModal] = useState(false);
   const [validationModalMessage, setValidationModalMessage] = useState('');
 
@@ -116,7 +203,10 @@ export const AdminDashboardPage = () => {
     try {
       const res = await axiosClient.get('/admin/dashboard-stats');
       if (res.success && res.data) {
-        setStats(res.data);
+        setStats({
+          ...res.data,
+          publishedElections: res.data.publishedElections ?? res.data.electionsWithPublishedResults ?? 0,
+        });
       }
     } catch (err) {
       console.error('Error fetching dashboard stats', err);
@@ -174,13 +264,14 @@ export const AdminDashboardPage = () => {
   };
 
   // 5. Fetch Voter Participation List (Zero vote choice leakage)
-  const fetchParticipationList = async (electionId, search = '', status = 'ALL') => {
-    const eid = electionId || selectedElectionId;
-    if (!eid) return;
+  const fetchParticipationList = async (electionId = 'ALL', areaId = 'ALL', search = '', status = 'ALL') => {
     setIsLoading(true);
     try {
-      const res = await axiosClient.get(`/elections/${eid}/voter-participation`, {
+      const targetEid = (electionId && electionId !== 'ALL') ? electionId : 'all';
+      const targetAreaId = (areaId && areaId !== 'ALL') ? areaId : undefined;
+      const res = await axiosClient.get(`/elections/${targetEid}/voter-participation`, {
         params: {
+          areaId: targetAreaId,
           search: search.trim() || undefined,
           status: status !== 'ALL' ? status : undefined,
         },
@@ -212,10 +303,17 @@ export const AdminDashboardPage = () => {
   };
 
   // 7. Fetch Voter Roll
-  const fetchVoters = async () => {
+  const fetchVoters = async (areaId = 'ALL', search = '') => {
     setIsLoading(true);
     try {
-      const res = await axiosClient.get('/voters?size=100');
+      const targetAreaId = (areaId && areaId !== 'ALL') ? areaId : undefined;
+      const res = await axiosClient.get('/voters', {
+        params: {
+          areaId: targetAreaId,
+          search: search?.trim() || undefined,
+          size: 500,
+        },
+      });
       if (res.success && res.data) {
         setVoters(res.data.content || []);
       }
@@ -266,19 +364,21 @@ export const AdminDashboardPage = () => {
 
   useEffect(() => {
     if (activeTab === 'ELECTIONS') {
-      fetchElections();
-    } else if (activeTab === 'CANDIDATES') {
+      if (elections.length === 0) fetchElections();
+    } else if (activeTab === 'CANDIDATES' && selectedElectionId) {
       fetchCandidates(selectedElectionId);
     } else if (activeTab === 'PARTICIPATION') {
-      fetchParticipationList(selectedElectionId, participationSearch, participationStatusFilter);
+      fetchParticipationList(participationElectionId, participationAreaFilter, participationSearch, participationStatusFilter);
     } else if (activeTab === 'USERS') {
       fetchUsers(usersSearch);
     } else if (activeTab === 'VOTERS') {
-      fetchVoters();
+      fetchVoters(voterRollAreaFilter, voterRollSearch);
     } else if (activeTab === 'AUDIT') {
       fetchAuditLogs();
+    } else if (activeTab === 'BLOCKCHAIN') {
+      fetchBlockchainHealth();
     }
-  }, [activeTab, selectedElectionId]);
+  }, [activeTab, selectedElectionId, participationElectionId, participationAreaFilter, voterRollAreaFilter]);
 
   // Selected Election Object
   const currentElection = elections.find((e) => e.id === Number(selectedElectionId)) || elections[0];
@@ -334,6 +434,12 @@ export const AdminDashboardPage = () => {
           message: `Results officially calculated and declared for ${election.name}!`,
         });
         setResultsList(res.data);
+        setStats((prev) => ({
+          ...prev,
+          publishedElections: (prev.publishedElections ?? 0) + 1,
+          electionsWithPublishedResults: (prev.electionsWithPublishedResults ?? 0) + 1,
+          closedElections: Math.max(0, (prev.closedElections ?? 1) - 1),
+        }));
         fetchElections();
         fetchStats();
       }
@@ -356,6 +462,12 @@ export const AdminDashboardPage = () => {
           message: `Results and ballots cleared for ${election.name}. Polls have been reset to OPEN.`,
         });
         setResultsList([]);
+        setStats((prev) => ({
+          ...prev,
+          publishedElections: Math.max(0, (prev.publishedElections ?? 1) - 1),
+          electionsWithPublishedResults: Math.max(0, (prev.electionsWithPublishedResults ?? 1) - 1),
+          openElections: (prev.openElections ?? 0) + 1,
+        }));
         fetchElections();
         fetchStats();
       }
@@ -424,6 +536,70 @@ export const AdminDashboardPage = () => {
       }
     } catch (err) {
       setFeedback({ type: 'error', message: err.message });
+    }
+  };
+
+  // Handle PDF Candidate Extraction Preview
+  const handleExtractPdf = async (e) => {
+    e.preventDefault();
+    if (!pdfFile || !selectedElectionId) {
+      setFeedback({ type: 'error', message: 'Please select an election and choose a PDF candidate document.' });
+      return;
+    }
+    setIsPdfExtracting(true);
+    setPdfPreview(null);
+    setPdfImportResult(null);
+    setFeedback(null);
+    try {
+      const formData = new FormData();
+      formData.append('electionId', selectedElectionId);
+      formData.append('file', pdfFile);
+
+      const res = await axiosClient.post('/candidates/import-pdf/preview', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      if (res.success && res.data) {
+        setPdfPreview(res.data);
+      }
+    } catch (err) {
+      setFeedback({ type: 'error', message: err.message || 'Failed to extract candidate roster from PDF' });
+    } finally {
+      setIsPdfExtracting(false);
+    }
+  };
+
+  // Handle Inline Edit of Extracted Candidate Row
+  const handleUpdatePreviewRow = (index, field, value) => {
+    if (!pdfPreview) return;
+    const updatedRows = [...pdfPreview.rows];
+    updatedRows[index] = { ...updatedRows[index], [field]: value };
+    setPdfPreview({ ...pdfPreview, rows: updatedRows });
+  };
+
+  // Handle Confirmed Candidate Import from PDF
+  const handleConfirmPdfImport = async () => {
+    if (!pdfPreview || !selectedElectionId) return;
+    setIsPdfImporting(true);
+    setFeedback(null);
+    try {
+      const candidatesToImport = pdfPreview.rows.filter((r) => !r.duplicate);
+      const res = await axiosClient.post('/candidates/import-pdf/confirm', {
+        electionId: Number(selectedElectionId),
+        candidates: candidatesToImport,
+      });
+      if (res.success && res.data) {
+        setPdfImportResult(res.data);
+        fetchCandidates(selectedElectionId);
+        fetchElections();
+        setFeedback({
+          type: 'success',
+          message: `Successfully imported ${res.data.importedCount} candidate(s) from PDF!`,
+        });
+      }
+    } catch (err) {
+      setFeedback({ type: 'error', message: err.message || 'Failed to import candidates from PDF' });
+    } finally {
+      setIsPdfImporting(false);
     }
   };
 
@@ -624,10 +800,15 @@ export const AdminDashboardPage = () => {
     }
   };
 
-  // Turnout Calculation for selected election
-  const totalEligibleInCurrentElection = currentElection?.totalEligibleVoters || 0;
-  const votesCastInCurrentElection = currentElection?.votesCast || 0;
-  const turnoutPercentageInCurrentElection = currentElection?.turnoutPercentage || 0;
+  // Turnout Calculation for Voter Participation tab
+  const isAllElectionsSelected = !participationElectionId || participationElectionId === 'ALL';
+  const totalEligibleInCurrentElection = isAllElectionsSelected
+    ? participationList.length
+    : (currentElection?.totalEligibleVoters || participationList.length || 0);
+  const votesCastInCurrentElection = participationList.filter((p) => p.participationStatus === 'VOTED').length;
+  const turnoutPercentageInCurrentElection = totalEligibleInCurrentElection > 0
+    ? Math.round((votesCastInCurrentElection / totalEligibleInCurrentElection) * 100)
+    : 0;
   const isRosterLocked = currentElection && currentElection.status === 'RESULT_DECLARED';
 
   return (
@@ -682,15 +863,17 @@ export const AdminDashboardPage = () => {
         </div>
         <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-3.5">
           <span className="text-[10px] uppercase tracking-wider text-slate-500 block font-semibold">Total Elections</span>
-          <p className="text-xl font-mono font-bold text-violet-400 mt-0.5">{stats.totalElections}</p>
+          <p className="text-xl font-mono font-bold text-violet-400 mt-0.5">{stats.totalElections ?? (elections?.length ?? 0)}</p>
         </div>
         <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-3.5">
           <span className="text-[10px] uppercase tracking-wider text-slate-500 block font-semibold">Active Polls</span>
-          <p className="text-xl font-mono font-bold text-amber-400 mt-0.5">{stats.openElections}</p>
+          <p className="text-xl font-mono font-bold text-amber-400 mt-0.5">{stats.openElections ?? (elections?.filter((e) => e.status === 'OPEN')?.length ?? 0)}</p>
         </div>
         <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-3.5">
           <span className="text-[10px] uppercase tracking-wider text-slate-500 block font-semibold">Declared Tallies</span>
-          <p className="text-xl font-mono font-bold text-emerald-400 mt-0.5">{stats.publishedElections}</p>
+          <p className="text-xl font-mono font-bold text-emerald-400 mt-0.5">
+            {stats.publishedElections ?? stats.electionsWithPublishedResults ?? (elections?.filter((e) => e.status === 'RESULT_DECLARED')?.length ?? 0)}
+          </p>
         </div>
       </div>
 
@@ -812,6 +995,19 @@ export const AdminDashboardPage = () => {
         >
           <History className="h-4 w-4" />
           <span>Audit Log Trail</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('BLOCKCHAIN')}
+          className={`flex items-center gap-2 px-4 py-3 text-xs font-bold border-b-2 whitespace-nowrap transition-all cursor-pointer ${
+            activeTab === 'BLOCKCHAIN'
+              ? 'border-amber-400 text-amber-300'
+              : 'border-transparent text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Layers className="h-4 w-4 text-amber-400" />
+          <span>Blockchain Audit</span>
         </button>
       </div>
 
@@ -1108,6 +1304,26 @@ export const AdminDashboardPage = () => {
               <button
                 type="button"
                 disabled={isRosterLocked}
+                onClick={() => {
+                  setShowImportPdfModal(true);
+                  setPdfFile(null);
+                  setPdfPreview(null);
+                  setPdfImportResult(null);
+                }}
+                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl font-bold text-xs shadow-md transition-all ${
+                  isRosterLocked
+                    ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                    : 'bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer'
+                }`}
+                title="Upload structured PDF with candidate roster, preview and inline review before importing"
+              >
+                <FileText className="h-4 w-4" />
+                <span>Import Candidates (PDF)</span>
+              </button>
+
+              <button
+                type="button"
+                disabled={isRosterLocked}
                 onClick={() => setShowAddCandidateModal(true)}
                 className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl font-bold text-xs shadow-md transition-all ${
                   isRosterLocked
@@ -1247,21 +1463,48 @@ export const AdminDashboardPage = () => {
               </p>
             </div>
 
-            {/* Select Election */}
-            <select
-              value={selectedElectionId || ''}
-              onChange={(e) => {
-                setSelectedElectionId(e.target.value);
-                fetchParticipationList(e.target.value, participationSearch, participationStatusFilter);
-              }}
-              className="rounded-xl border border-slate-800 bg-slate-900 px-3.5 py-2 text-xs font-semibold text-white focus:outline-none focus:border-cyan-400"
-            >
-              {elections.map((el) => (
-                <option key={el.id} value={el.id}>
-                  {el.electionCode} — {el.name} ({el.areaName})
-                </option>
-              ))}
-            </select>
+            {/* Select Election & Area Filters */}
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-slate-400 font-semibold hidden md:inline">Scope:</span>
+                <select
+                  value={participationElectionId}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setParticipationElectionId(val);
+                    fetchParticipationList(val, participationAreaFilter, participationSearch, participationStatusFilter);
+                  }}
+                  className="rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-xs font-semibold text-white focus:outline-none focus:border-cyan-400"
+                >
+                  <option value="ALL">🌐 All Elections &amp; Areas (Show All Voters)</option>
+                  {elections.map((el) => (
+                    <option key={el.id} value={el.id}>
+                      {el.electionCode} — {el.name} ({el.areaName})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-slate-400 font-semibold hidden md:inline">Area:</span>
+                <select
+                  value={participationAreaFilter}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setParticipationAreaFilter(val);
+                    fetchParticipationList(participationElectionId, val, participationSearch, participationStatusFilter);
+                  }}
+                  className="rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-xs font-semibold text-white focus:outline-none focus:border-cyan-400"
+                >
+                  <option value="ALL">📍 All Areas ({areas.length} Areas)</option>
+                  {areas.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name} ({a.constituencyName})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
           </div>
 
           {/* Privacy Protection Banner (Requirements 3 & 5) */}
@@ -1280,7 +1523,7 @@ export const AdminDashboardPage = () => {
           {/* Live Area Turnout Overview */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-              <span className="text-[10px] uppercase text-slate-500 font-semibold block">Total Eligible in Area</span>
+              <span className="text-[10px] uppercase text-slate-500 font-semibold block">Total Eligible</span>
               <p className="text-2xl font-mono font-bold text-white mt-1">{totalEligibleInCurrentElection}</p>
             </div>
             <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
@@ -1305,11 +1548,11 @@ export const AdminDashboardPage = () => {
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
               <input
                 type="text"
-                placeholder="Search by Voter ID (e.g. VOT-MUM-1001) or Citizen Name..."
+                placeholder="Search across voters by Voter ID (e.g. VOT-PUN-..., VOT-MUM-...), Citizen Name, or Area..."
                 value={participationSearch}
                 onChange={(e) => {
                   setParticipationSearch(e.target.value);
-                  fetchParticipationList(selectedElectionId, e.target.value, participationStatusFilter);
+                  fetchParticipationList(participationElectionId, participationAreaFilter, e.target.value, participationStatusFilter);
                 }}
                 className="w-full rounded-xl border border-slate-800 bg-slate-900 pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400"
               />
@@ -1323,7 +1566,7 @@ export const AdminDashboardPage = () => {
                 type="button"
                 onClick={() => {
                   setParticipationStatusFilter('ALL');
-                  fetchParticipationList(selectedElectionId, participationSearch, 'ALL');
+                  fetchParticipationList(participationElectionId, participationAreaFilter, participationSearch, 'ALL');
                 }}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer ${
                   participationStatusFilter === 'ALL'
@@ -1337,7 +1580,7 @@ export const AdminDashboardPage = () => {
                 type="button"
                 onClick={() => {
                   setParticipationStatusFilter('VOTED');
-                  fetchParticipationList(selectedElectionId, participationSearch, 'VOTED');
+                  fetchParticipationList(participationElectionId, participationAreaFilter, participationSearch, 'VOTED');
                 }}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer ${
                   participationStatusFilter === 'VOTED'
@@ -1351,7 +1594,7 @@ export const AdminDashboardPage = () => {
                 type="button"
                 onClick={() => {
                   setParticipationStatusFilter('NOT_VOTED');
-                  fetchParticipationList(selectedElectionId, participationSearch, 'NOT_VOTED');
+                  fetchParticipationList(participationElectionId, participationAreaFilter, participationSearch, 'NOT_VOTED');
                 }}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer ${
                   participationStatusFilter === 'NOT_VOTED'
@@ -1666,7 +1909,12 @@ export const AdminDashboardPage = () => {
       {activeTab === 'VOTERS' && (
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <h3 className="text-sm font-bold text-white">Authorized Electoral Roll</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-bold text-white">Authorized Electoral Roll</h3>
+              <span className="text-xs font-mono font-bold text-cyan-400 bg-cyan-950/60 border border-cyan-500/30 px-2.5 py-0.5 rounded-full">
+                {voters.length} {voters.length === 1 ? 'voter' : 'voters'} displayed
+              </span>
+            </div>
             <div className="flex items-center gap-2">
               <button
                 type="button"
@@ -1684,6 +1932,44 @@ export const AdminDashboardPage = () => {
                 <Plus className="h-4 w-4" />
                 <span>Add Single Voter</span>
               </button>
+            </div>
+          </div>
+
+          {/* Search & Area Filter Controls */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+              <input
+                type="text"
+                placeholder="Search Voter Roll by Voter ID (e.g. VOT-PUN-..., VOT-MUM-...) or Citizen Name..."
+                value={voterRollSearch}
+                onChange={(e) => {
+                  setVoterRollSearch(e.target.value);
+                  fetchVoters(voterRollAreaFilter, e.target.value);
+                }}
+                className="w-full rounded-xl border border-slate-800 bg-slate-900 pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400"
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-400 font-semibold flex items-center gap-1 shrink-0">
+                <Filter className="h-3.5 w-3.5" /> Filter by Area:
+              </span>
+              <select
+                value={voterRollAreaFilter}
+                onChange={(e) => {
+                  setVoterRollAreaFilter(e.target.value);
+                  fetchVoters(e.target.value, voterRollSearch);
+                }}
+                className="rounded-xl border border-slate-800 bg-slate-900 px-3.5 py-2 text-xs font-semibold text-white focus:outline-none focus:border-cyan-400"
+              >
+                <option value="ALL">📍 All Areas (Show All 500 Voters)</option>
+                {areas.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name} ({a.constituencyName})
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -1785,6 +2071,242 @@ export const AdminDashboardPage = () => {
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* TAB 7: BLOCKCHAIN & NODE AUDIT */}
+      {/* ======================================================== */}
+      {activeTab === 'BLOCKCHAIN' && (
+        <div className="space-y-6 animate-fadeIn">
+          {/* Top Banner with live status & Reconcile button */}
+          <div className="rounded-3xl border border-slate-800 bg-slate-950/80 p-6 sm:p-8 backdrop-blur-xl space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                  <Layers className="h-6 w-6" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-bold text-white">Hyperledger Besu / Ethereum Network Node</h3>
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                      blockchainData?.connected
+                        ? 'bg-emerald-950 text-emerald-300 border-emerald-500/30'
+                        : 'bg-rose-950 text-rose-300 border-rose-500/30'
+                    }`}>
+                      <span className={`h-1.5 w-1.5 rounded-full ${blockchainData?.connected ? 'bg-emerald-400' : 'bg-rose-400'}`} />
+                      {blockchainData?.connected ? 'NODE ONLINE' : 'NODE OFFLINE'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Live JSON-RPC audit anchor &amp; smart contract execution telemetry.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={fetchBlockchainHealth}
+                  disabled={isBlockchainLoading}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs font-bold transition-all cursor-pointer"
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${isBlockchainLoading ? 'animate-spin' : ''}`} />
+                  <span>Refresh</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleReconcileBlockchain}
+                  disabled={isReconciling}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 text-xs font-bold shadow-lg shadow-amber-500/20 transition-all cursor-pointer disabled:opacity-50"
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${isReconciling ? 'animate-spin' : ''}`} />
+                  <span>{isReconciling ? 'Synchronizing On-Chain...' : 'Trigger Reconcile'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowResetBlockchainModal(true)}
+                  disabled={isResettingBlockchain}
+                  className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white text-xs font-bold shadow-lg shadow-rose-600/20 transition-all cursor-pointer disabled:opacity-50"
+                  title="Reset EVM block height back to genesis (0)"
+                >
+                  <RotateCcw className={`h-3.5 w-3.5 ${isResettingBlockchain ? 'animate-spin' : ''}`} />
+                  <span>{isResettingBlockchain ? 'Resetting...' : 'Reset Block Height (0)'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Metric telemetry cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+              <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800/80">
+                <span className="text-[11px] text-slate-400 font-medium">Chain ID</span>
+                <p className="text-lg font-mono font-bold text-white mt-1">
+                  {blockchainData?.chainId ?? '1337'}
+                </p>
+                <span className="text-[10px] text-slate-500">Local Besu / EVM</span>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800/80">
+                <span className="text-[11px] text-slate-400 font-medium">Current Block Height</span>
+                <p className="text-lg font-mono font-bold text-amber-300 mt-1">
+                  #{blockchainData?.latestBlock ?? '—'}
+                </p>
+                <span className="text-[10px] text-slate-500">Mined on ledger</span>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800/80">
+                <span className="text-[11px] text-slate-400 font-medium">Client Software</span>
+                <p className="text-xs font-mono font-bold text-cyan-300 mt-1 truncate" title={blockchainData?.clientVersion}>
+                  {blockchainData?.clientVersion ?? 'Hyperledger Besu'}
+                </p>
+                <span className="text-[10px] text-slate-500">Ethereum JSON-RPC</span>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800/80">
+                <span className="text-[11px] text-slate-400 font-medium">RPC Connectivity</span>
+                <p className="text-xs font-mono font-bold text-emerald-400 mt-1 truncate" title={blockchainData?.rpcUrl}>
+                  {blockchainData?.rpcUrl ?? 'http://127.0.0.1:8545'}
+                </p>
+                <span className="text-[10px] text-slate-500">Localhost loopback</span>
+              </div>
+            </div>
+
+            {/* Smart Contract & Signer Key Details */}
+            <div className="space-y-3 pt-2 border-t border-slate-800/80 text-xs">
+              <div className="flex flex-col sm:flex-row justify-between py-2 border-b border-slate-800/60 gap-1 items-start sm:items-center">
+                <span className="text-slate-400 font-semibold">Smart Contract Address:</span>
+                <span className="font-mono text-cyan-300 text-xs select-all bg-slate-900 px-2 py-0.5 rounded-lg border border-slate-800">
+                  {blockchainData?.contractAddress || '0x9A676e781A523b5d0C0e43731313A708CB607508'}
+                </span>
+              </div>
+
+              <div className="flex flex-col sm:flex-row justify-between py-2 border-b border-slate-800/60 gap-1 items-start sm:items-center">
+                <span className="text-slate-400 font-semibold">Deployer / Authority Signer:</span>
+                <span className="font-mono text-slate-300 text-xs select-all bg-slate-900 px-2 py-0.5 rounded-lg border border-slate-800">
+                  {blockchainData?.signerAddress || '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Smart Contract Architectural Protocol Spec */}
+          <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-6 sm:p-8 space-y-4">
+            <h4 className="text-sm font-bold text-white flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-emerald-400" />
+              <span>Cryptographic Security &amp; Ballot Secrecy Guarantees</span>
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-slate-400 leading-relaxed">
+              <div className="p-4 rounded-2xl bg-slate-900/50 border border-slate-800/60 space-y-2">
+                <p className="font-bold text-slate-200">1. Zero-Knowledge Voter Privacy</p>
+                <p>
+                  No personal identity attributes (Voter name, Aadhaar digits, Election ID) ever appear in smart contract calldata or event topics. Ballots are decoupled from citizen identity upon submission.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-900/50 border border-slate-800/60 space-y-2">
+                <p className="font-bold text-slate-200">2. Deterministic Nullifiers</p>
+                <p>
+                  Nullifier hash <code className="text-cyan-300">SHA256(ELEC:id:NULLIFIER:receipt)</code> enforces strictly one-person-one-vote on-chain. Duplicate attempts revert with <code className="text-rose-300">Nullifier already spent</code>.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-900/50 border border-slate-800/60 space-y-2">
+                <p className="font-bold text-slate-200">3. Immutable Ballot Commitments</p>
+                <p>
+                  Accepted ballots emit <code className="text-amber-300">BallotCommitmentRecorded(electionId, nullifierHash, ballotCommitment, timestamp)</code> indexed on-chain, verifiable against public vote receipts.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-900/50 border border-slate-800/60 space-y-2">
+                <p className="font-bold text-slate-200">4. Certified Tally Publication</p>
+                <p>
+                  Upon election closure, the central authority publishes the certified tally hash <code className="text-violet-300">publishTallyCommitment</code> to create an immutable cryptographic seal.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* MODAL: RESET BLOCKCHAIN BLOCK HEIGHT */}
+      {/* ======================================================== */}
+      {showResetBlockchainModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fadeIn">
+          <div className="w-full max-w-lg rounded-3xl border border-rose-900/60 bg-[#0E1322] p-6 space-y-4 shadow-2xl shadow-rose-950/50">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2 text-rose-400 font-bold text-base">
+                <RotateCcw className="h-5 w-5" />
+                <h3>Reset Blockchain Block Height</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowResetBlockchainModal(false)}
+                className="text-slate-400 hover:text-white cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs text-slate-300">
+              <div className="p-3.5 rounded-2xl bg-rose-950/30 border border-rose-800/40 text-rose-200">
+                <p className="font-semibold text-rose-300 mb-1">Destructive Reset Action</p>
+                <p className="text-[11px] text-rose-200/80 leading-relaxed">
+                  This will reset the EVM development blockchain block height back to genesis (block 0). All transactions recorded in the current development node will be wiped.
+                </p>
+              </div>
+
+              <div className="space-y-2 pt-2">
+                <label className="flex items-start gap-2.5 p-3 rounded-xl bg-slate-900 border border-slate-800 cursor-pointer hover:border-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={resetRedeploy}
+                    onChange={(e) => setResetRedeploy(e.target.checked)}
+                    className="mt-0.5 rounded border-slate-700 text-rose-600 focus:ring-rose-500 h-4 w-4"
+                  />
+                  <div>
+                    <span className="font-semibold text-white block">Pre-deploy fresh smart contract immediately</span>
+                    <span className="text-[11px] text-slate-400">Leave unchecked to start strictly at block height #0. If unchecked, the smart contract is automatically deployed on-demand when the first vote is recorded.</span>
+                  </div>
+                </label>
+
+                <label className="flex items-start gap-2.5 p-3 rounded-xl bg-slate-900 border border-slate-800 cursor-pointer hover:border-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={resetClearHistory}
+                    onChange={(e) => setResetClearHistory(e.target.checked)}
+                    className="mt-0.5 rounded border-slate-700 text-rose-600 focus:ring-rose-500 h-4 w-4"
+                  />
+                  <div>
+                    <span className="font-semibold text-white block">Clear application blockchain transaction records</span>
+                    <span className="text-[11px] text-slate-400">Cleans old transaction records and resets receipts to pending so new transactions match the fresh chain</span>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setShowResetBlockchainModal(false)}
+                disabled={isResettingBlockchain}
+                className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-semibold cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleResetBlockchain}
+                disabled={isResettingBlockchain}
+                className="flex items-center gap-2 px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-lg shadow-rose-600/30 transition-all cursor-pointer disabled:opacity-50"
+              >
+                <RotateCcw className={`h-3.5 w-3.5 ${isResettingBlockchain ? 'animate-spin' : ''}`} />
+                <span>{isResettingBlockchain ? 'Resetting to Block 0...' : 'Confirm Reset to Block 0'}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1999,6 +2521,334 @@ export const AdminDashboardPage = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* MODAL: PDF CANDIDATE IMPORT (FEATURE 3) */}
+      {/* ======================================================== */}
+      {showImportPdfModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fadeIn">
+          <div className="w-full max-w-4xl max-h-[90vh] flex flex-col rounded-3xl border border-slate-800 bg-[#0E1322] p-6 space-y-4 shadow-2xl overflow-hidden">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="h-9 w-9 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
+                  <FileText className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white text-base">Import Candidates from PDF</h3>
+                  <p className="text-[11px] text-slate-400">
+                    Election:{' '}
+                    <span className="text-cyan-300 font-semibold">
+                      {currentElection ? `${currentElection.name} (${currentElection.electionCode})` : 'Selected Election'}
+                    </span>
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowImportPdfModal(false);
+                  setPdfPreview(null);
+                  setPdfImportResult(null);
+                  setPdfFile(null);
+                }}
+                className="text-slate-400 hover:text-white cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 overflow-y-auto space-y-4 pr-1 text-xs">
+              {/* STEP 1: UPLOAD & EXTRACT */}
+              {!pdfPreview && !pdfImportResult && (
+                <form onSubmit={handleExtractPdf} className="space-y-4">
+                  <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-900/60 p-6 text-center space-y-3">
+                    <Upload className="h-8 w-8 text-emerald-400 mx-auto" />
+                    <div>
+                      <p className="font-bold text-sm text-white">Select Structured PDF Document</p>
+                      <p className="text-slate-400 text-xs mt-1">
+                        Upload an official candidate nomination list or gazette document (Max 5MB).
+                      </p>
+                    </div>
+                    <input
+                      type="file"
+                      accept=".pdf,application/pdf"
+                      required
+                      onChange={(e) => setPdfFile(e.target.files[0])}
+                      className="max-w-md mx-auto block w-full text-slate-300 file:mr-4 file:py-1.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-500 file:text-slate-950 cursor-pointer"
+                    />
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-4 space-y-2 text-slate-300">
+                    <p className="font-bold text-cyan-400 flex items-center gap-1.5">
+                      <Sparkles className="h-3.5 w-3.5" />
+                      <span>Supported PDF Data Formats</span>
+                    </p>
+                    <p className="text-[11px] text-slate-400 leading-relaxed">
+                      Apache PDFBox automatically parses structured text layouts. Both table-delimited lines and key-value sections are supported:
+                    </p>
+                    <div className="rounded-xl bg-slate-950 p-3 font-mono text-[11px] text-emerald-300/90 space-y-1">
+                      <p># Format A: Pipe-Delimited Table Rows</p>
+                      <p className="text-slate-400">CAND-101 | Jane Doe | Democratic Alliance | Lotus 🪷 | Civil rights advocate</p>
+                      <p className="text-slate-400">CAND-102 | Alex Mercer | Independent Party | Sun ☀️ | Tech &amp; green governance</p>
+                      <p className="pt-1"># Format B: Key-Value Blocks</p>
+                      <p className="text-slate-400">Candidate Code: CAND-103</p>
+                      <p className="text-slate-400">Full Name: Priya Sharma</p>
+                      <p className="text-slate-400">Party Name: Progressive Coalition</p>
+                      <p className="text-slate-400">Party Symbol: Torch 🔥</p>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowImportPdfModal(false)}
+                      className="px-4 py-2 text-slate-400 hover:text-white cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={!pdfFile || isPdfExtracting}
+                      className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:bg-slate-800 disabled:text-slate-500 font-bold text-slate-950 flex items-center gap-2 cursor-pointer transition-all"
+                    >
+                      {isPdfExtracting ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 animate-spin" />
+                          <span>Extracting &amp; Parsing with PDFBox...</span>
+                        </>
+                      ) : (
+                        <>
+                          <FileText className="h-4 w-4" />
+                          <span>Parse &amp; Preview Candidates</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* STEP 2: PREVIEW & INLINE EDITING */}
+              {pdfPreview && !pdfImportResult && (
+                <div className="space-y-4">
+                  {/* Summary Metric Chips */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-3 text-center">
+                      <span className="text-slate-400 text-[10px] uppercase font-bold block">Total Extracted</span>
+                      <span className="text-lg font-mono font-bold text-white">{pdfPreview.totalParsed}</span>
+                    </div>
+                    <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/20 p-3 text-center">
+                      <span className="text-emerald-400 text-[10px] uppercase font-bold block">Valid &amp; Ready</span>
+                      <span className="text-lg font-mono font-bold text-emerald-300">{pdfPreview.validCount}</span>
+                    </div>
+                    <div className="rounded-xl border border-amber-500/30 bg-amber-950/20 p-3 text-center">
+                      <span className="text-amber-400 text-[10px] uppercase font-bold block">Duplicates</span>
+                      <span className="text-lg font-mono font-bold text-amber-300">{pdfPreview.duplicateCount}</span>
+                    </div>
+                    <div className="rounded-xl border border-rose-500/30 bg-rose-950/20 p-3 text-center">
+                      <span className="text-rose-400 text-[10px] uppercase font-bold block">Incomplete / Errors</span>
+                      <span className="text-lg font-mono font-bold text-rose-300">{pdfPreview.errorCount}</span>
+                    </div>
+                  </div>
+
+                  <p className="text-[11px] text-slate-400">
+                    Review extracted candidate records below. You can edit codes, names, or symbols inline before confirming the import into the active election roster.
+                  </p>
+
+                  {/* Editable Preview Table */}
+                  <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-900/40">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="border-b border-slate-800 bg-slate-950/60 text-[11px] font-bold text-slate-400">
+                          <th className="py-2.5 px-3">#</th>
+                          <th className="py-2.5 px-3">Candidate Code</th>
+                          <th className="py-2.5 px-3">Full Name</th>
+                          <th className="py-2.5 px-3">Party Name</th>
+                          <th className="py-2.5 px-3">Symbol</th>
+                          <th className="py-2.5 px-3">Manifesto / Bio</th>
+                          <th className="py-2.5 px-3">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800/60">
+                        {pdfPreview.rows.map((row, idx) => (
+                          <tr
+                            key={idx}
+                            className={`hover:bg-slate-800/30 transition-colors ${
+                              row.duplicate ? 'bg-amber-950/10' : !row.valid ? 'bg-rose-950/10' : ''
+                            }`}
+                          >
+                            <td className="py-2 px-3 font-mono text-slate-400">{row.rowIndex}</td>
+                            <td className="py-2 px-3">
+                              <input
+                                type="text"
+                                value={row.candidateCode || ''}
+                                onChange={(e) => handleUpdatePreviewRow(idx, 'candidateCode', e.target.value.toUpperCase())}
+                                className="w-28 rounded-lg border border-slate-700 bg-slate-950 px-2 py-1 text-cyan-300 font-mono text-xs uppercase focus:outline-none focus:border-cyan-400"
+                              />
+                            </td>
+                            <td className="py-2 px-3">
+                              <input
+                                type="text"
+                                value={row.fullName || ''}
+                                onChange={(e) => handleUpdatePreviewRow(idx, 'fullName', e.target.value)}
+                                className="w-36 rounded-lg border border-slate-700 bg-slate-950 px-2 py-1 text-white text-xs focus:outline-none focus:border-cyan-400"
+                              />
+                            </td>
+                            <td className="py-2 px-3">
+                              <input
+                                type="text"
+                                value={row.partyName || ''}
+                                onChange={(e) => handleUpdatePreviewRow(idx, 'partyName', e.target.value)}
+                                className="w-36 rounded-lg border border-slate-700 bg-slate-950 px-2 py-1 text-slate-200 text-xs focus:outline-none focus:border-cyan-400"
+                              />
+                            </td>
+                            <td className="py-2 px-3">
+                              <input
+                                type="text"
+                                value={row.partySymbol || ''}
+                                onChange={(e) => handleUpdatePreviewRow(idx, 'partySymbol', e.target.value)}
+                                className="w-24 rounded-lg border border-slate-700 bg-slate-950 px-2 py-1 text-amber-300 text-xs focus:outline-none focus:border-cyan-400"
+                              />
+                            </td>
+                            <td className="py-2 px-3">
+                              <input
+                                type="text"
+                                value={row.bio || ''}
+                                onChange={(e) => handleUpdatePreviewRow(idx, 'bio', e.target.value)}
+                                placeholder="Bio or agenda"
+                                className="w-48 rounded-lg border border-slate-700 bg-slate-950 px-2 py-1 text-slate-400 text-xs focus:outline-none focus:border-cyan-400"
+                              />
+                            </td>
+                            <td className="py-2 px-3">
+                              {row.valid && !row.duplicate ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 whitespace-nowrap">
+                                  <CheckCircle2 className="h-3 w-3" />
+                                  <span>Ready</span>
+                                </span>
+                              ) : row.duplicate ? (
+                                <span
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 whitespace-nowrap"
+                                  title={row.validationErrors.join(', ')}
+                                >
+                                  <AlertTriangle className="h-3 w-3" />
+                                  <span>Duplicate</span>
+                                </span>
+                              ) : (
+                                <span
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30 whitespace-nowrap"
+                                  title={row.validationErrors.join(', ')}
+                                >
+                                  <AlertCircle className="h-3 w-3" />
+                                  <span>Invalid</span>
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Preview Action Buttons */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPdfPreview(null);
+                        setPdfFile(null);
+                      }}
+                      className="px-3.5 py-2 rounded-xl border border-slate-700 bg-slate-900 text-slate-300 hover:text-white font-semibold text-xs cursor-pointer"
+                    >
+                      ← Upload Different PDF
+                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowImportPdfModal(false)}
+                        className="px-4 py-2 text-slate-400 hover:text-white cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleConfirmPdfImport}
+                        disabled={isPdfImporting || pdfPreview.rows.filter((r) => !r.duplicate).length === 0}
+                        className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:bg-slate-800 disabled:text-slate-500 font-bold text-slate-950 flex items-center gap-2 cursor-pointer shadow-lg shadow-emerald-950/40 transition-all"
+                      >
+                        {isPdfImporting ? (
+                          <>
+                            <RefreshCw className="h-4 w-4 animate-spin" />
+                            <span>Persisting into Database...</span>
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle2 className="h-4 w-4" />
+                            <span>
+                              Confirm &amp; Import ({pdfPreview.rows.filter((r) => !r.duplicate).length} Candidate(s))
+                            </span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 3: IMPORT SUCCESS SUMMARY */}
+              {pdfImportResult && (
+                <div className="rounded-2xl border border-emerald-500/40 bg-emerald-950/20 p-6 space-y-4 text-center">
+                  <div className="h-12 w-12 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 mx-auto">
+                    <CheckCircle2 className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-base text-white">Candidate Import Completed Successfully</h4>
+                    <p className="text-xs text-slate-300 mt-1">
+                      {pdfImportResult.importedCount} candidate(s) have been verified, saved, and added to the official election roster.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 max-w-xs mx-auto">
+                    <div className="rounded-xl bg-slate-900/80 p-2.5 border border-slate-800">
+                      <span className="text-[10px] text-slate-400 uppercase font-bold block">Imported</span>
+                      <span className="text-base font-mono font-bold text-emerald-400">{pdfImportResult.importedCount}</span>
+                    </div>
+                    <div className="rounded-xl bg-slate-900/80 p-2.5 border border-slate-800">
+                      <span className="text-[10px] text-slate-400 uppercase font-bold block">Skipped / Duplicates</span>
+                      <span className="text-base font-mono font-bold text-amber-400">{pdfImportResult.skippedCount}</span>
+                    </div>
+                  </div>
+
+                  {pdfImportResult.errors && pdfImportResult.errors.length > 0 && (
+                    <div className="text-left rounded-xl bg-slate-900/80 border border-amber-500/30 p-3 space-y-1 text-amber-300 text-[11px]">
+                      <p className="font-bold flex items-center gap-1.5">
+                        <AlertTriangle className="h-3.5 w-3.5" />
+                        <span>Skipped Record Details:</span>
+                      </p>
+                      {pdfImportResult.errors.map((err, i) => (
+                        <p key={i} className="text-slate-400">• {err}</p>
+                      ))}
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowImportPdfModal(false);
+                      setPdfPreview(null);
+                      setPdfImportResult(null);
+                      setPdfFile(null);
+                    }}
+                    className="mt-2 px-6 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs cursor-pointer inline-flex items-center gap-1.5"
+                  >
+                    <span>Done &amp; View Roster</span>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

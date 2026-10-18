@@ -5,13 +5,14 @@ import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAnalytics, isSupported } from 'firebase/analytics';
 
 export const firebaseConfig = {
-  apiKey: "AIzaSyBcRm2Wm2upczEgTAZxInU4kKg-5FU6VXg",
-  authDomain: "evotingsystem-99e8a.firebaseapp.com",
-  projectId: "evotingsystem-99e8a",
-  storageBucket: "evotingsystem-99e8a.firebasestorage.app",
-  messagingSenderId: "955499184767",
-  appId: "1:955499184767:web:5587f943527f80f485f54a",
-  measurementId: "G-F0PCZVN7M1",
+  apiKey: "AIzaSyCJGa3s2WAM6q3Gndw1-KPEQc4ZhoP_vZg",
+  authDomain: "evotingsystem-4c3a1.firebaseapp.com",
+  databaseURL: "https://evotingsystem-4c3a1-default-rtdb.firebaseio.com",
+  projectId: "evotingsystem-4c3a1",
+  storageBucket: "evotingsystem-4c3a1.firebasestorage.app",
+  messagingSenderId: "746291117510",
+  appId: "1:746291117510:web:9ecbb9d4d7d4f504d986c7",
+  measurementId: "G-QBR78BHWZY",
 };
 
 export const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);

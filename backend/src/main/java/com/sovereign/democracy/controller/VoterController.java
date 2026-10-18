@@ -30,7 +30,7 @@ public class VoterController {
             @RequestParam(required = false) Long areaId,
             @RequestParam(required = false) String search,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "50") int size,
+            @RequestParam(defaultValue = "500") int size,
             @RequestParam(defaultValue = "voterId") String sortBy) {
 
         Page<VoterRecordDto> result = voterService.getVoters(areaId, search,
