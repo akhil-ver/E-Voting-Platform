@@ -104,14 +104,15 @@ public class AuthService {
                 record.getFullName(),
                 record.getFatherName(),
                 record.getMotherName(),
-                "0000",
+                null,
                 record.getArea().getName(),
                 record.getArea().getId(),
                 record.isEligible(),
                 false
         );
-        dto.setEmail(record.getComputedEmail());
-        dto.setAadhaarLast4("0000");
+        dto.setAadhaarMasked(null);
+        dto.setAadhaarLast4(null);
+        dto.setEmail(VoterService.maskEmailForPublic(record.getComputedEmail()));
         return dto;
     }
 

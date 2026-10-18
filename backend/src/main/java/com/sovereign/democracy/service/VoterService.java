@@ -177,19 +177,15 @@ public class VoterService {
                     record.getFullName(),
                     null,
                     null,
-                    "0000",
+                    null,
                     record.getArea().getName(),
                     record.getArea().getId(),
                     record.isEligible(),
                     record.isHasRegisteredAccount()
             );
-            dto.setAadhaarLast4("0000");
-            String standardEmail = record.getComputedEmail();
-            if (standardEmail != null && record.getAadhaarLast4() != null) {
-                dto.setEmail(standardEmail.replace(record.getAadhaarLast4(), "0000"));
-            } else {
-                dto.setEmail(standardEmail);
-            }
+            dto.setAadhaarLast4(null);
+            dto.setAadhaarMasked(null);
+            dto.setEmail(maskEmailForPublic(record.getComputedEmail()));
         }
 
         if (record.isHasRegisteredAccount()) {
@@ -203,5 +199,18 @@ public class VoterService {
         }
 
         return dto;
+    }
+
+    public static String maskEmailForPublic(String email) {
+        if (email == null || !email.contains("@")) {
+            return "••••••••••••@gmail.com";
+        }
+        String[] parts = email.split("@");
+        String user = parts[0];
+        String domain = parts[1];
+        if (user.length() <= 2) {
+            return user + "••••••••••••@" + domain;
+        }
+        return user.substring(0, 2) + "••••••••••••@" + domain;
     }
 }

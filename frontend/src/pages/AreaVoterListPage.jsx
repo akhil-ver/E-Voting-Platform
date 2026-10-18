@@ -370,7 +370,7 @@ export const AreaVoterListPage = () => {
                 <th className="py-3 px-4">Election ID</th>
                 <th className="py-3 px-4">Citizen Full Name &amp; Email</th>
                 <th className="py-3 px-4">Assigned Area</th>
-                <th className="py-3 px-4">Verification &amp; Aadhaar</th>
+                <th className="py-3 px-4">{isAdmin ? 'Verification & Aadhaar' : 'Electoral Verification'}</th>
                 <th className="py-3 px-4">Account Status</th>
                 <th className="py-3 px-4 text-right">{isAdmin ? 'Admin Access Controls' : 'Action'}</th>
               </tr>
@@ -391,10 +391,17 @@ export const AreaVoterListPage = () => {
                 </tr>
               ) : (
                 filteredVoters.map((v) => {
-                  const voterLast4 = isAdmin ? (v.aadhaarLast4 || (v.email?.match(/(\d{4})@gmail\.com$/)?.[1]) || '0000') : '0000';
+                  const voterLast4 = isAdmin ? (v.aadhaarLast4 || (v.email?.match(/(\d{4})@gmail\.com$/)?.[1]) || '0000') : '';
+                  const maskedPublicEmail = (emailStr, nameStr) => {
+                    const raw = emailStr || (nameStr ? `${nameStr.toLowerCase().replace(/[^a-z0-9]/g, '')}@gmail.com` : '');
+                    if (!raw || !raw.includes('@')) return '••••••••••••@gmail.com';
+                    const [uname, domain] = raw.split('@');
+                    const prefix = uname.slice(0, 2);
+                    return `${prefix}••••••••••••@${domain}`;
+                  };
                   const voterEmail = isAdmin
                     ? (v.email || (v.fullName ? `${v.fullName.toLowerCase().replace(/[^a-z0-9]/g, '')}${voterLast4}@gmail.com` : ''))
-                    : (v.email ? v.email.replace(/\d{4}@gmail\.com$/, '0000@gmail.com') : (v.fullName ? `${v.fullName.toLowerCase().replace(/[^a-z0-9]/g, '')}0000@gmail.com` : ''));
+                    : maskedPublicEmail(v.email, v.fullName);
                   return (
                     <tr key={v.id} className="hover:bg-slate-900/40 transition-colors">
                       <td className="py-3 px-4 font-mono font-bold text-cyan-300">
@@ -414,14 +421,15 @@ export const AreaVoterListPage = () => {
                           <ShieldCheck className="h-3 w-3 text-emerald-400" />
                           <span>Protected • Zero PII</span>
                         </span>
-                        <div className="text-[11px] font-mono text-slate-400 mt-0.5">
-                          Aadhaar: •••• ••••{' '}
-                          {isAdmin ? (
-                            <span className="text-amber-300 font-bold">{voterLast4}</span>
-                          ) : (
-                            <span className="text-slate-500 font-mono">0000</span>
-                          )}
-                        </div>
+                        {isAdmin ? (
+                          <div className="text-[11px] font-mono text-slate-400 mt-0.5">
+                            Aadhaar: •••• •••• <span className="text-amber-300 font-bold">{voterLast4}</span>
+                          </div>
+                        ) : (
+                          <div className="text-[11px] text-slate-400 mt-0.5">
+                            <span>Official Roll Verified</span>
+                          </div>
+                        )}
                       </td>
                       <td className="py-3 px-4">
                         {v.hasRegisteredAccount ? (
