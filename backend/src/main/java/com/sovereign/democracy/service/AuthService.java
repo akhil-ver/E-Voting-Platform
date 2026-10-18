@@ -98,7 +98,7 @@ public class AuthService {
             throw new BadRequestException("Duplicate Registration Rejected: An account has already been registered for Election ID '" + cleanElectionId + "'. Please log in directly.");
         }
 
-        return new VoterRecordDto(
+        VoterRecordDto dto = new VoterRecordDto(
                 record.getId(),
                 record.getVoterId(),
                 record.getFullName(),
@@ -110,6 +110,9 @@ public class AuthService {
                 record.isEligible(),
                 false
         );
+        dto.setEmail(record.getComputedEmail());
+        dto.setAadhaarLast4(record.getAadhaarLast4());
+        return dto;
     }
 
     @Transactional

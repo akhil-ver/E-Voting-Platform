@@ -26,6 +26,9 @@ public class VoterRecord {
     @Column(name = "mother_name", length = 150)
     private String motherName;
 
+    @Column(name = "email", length = 150)
+    private String email;
+
     @Column(name = "aadhaar_last4", nullable = false, length = 4)
     private String aadhaarLast4;
 
@@ -58,6 +61,11 @@ public class VoterRecord {
         this.hasRegisteredAccount = false;
     }
 
+    public VoterRecord(String voterId, String fullName, String fatherName, String motherName, String aadhaarLast4, Area area, String email) {
+        this(voterId, fullName, fatherName, motherName, aadhaarLast4, area);
+        this.email = email;
+    }
+
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
@@ -84,6 +92,9 @@ public class VoterRecord {
     public String getMotherName() { return motherName; }
     public void setMotherName(String motherName) { this.motherName = motherName; }
 
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+
     public String getAadhaarLast4() { return aadhaarLast4; }
     public void setAadhaarLast4(String aadhaarLast4) { this.aadhaarLast4 = aadhaarLast4; }
 
@@ -101,11 +112,14 @@ public class VoterRecord {
 
     /**
      * Computes the official standard voter recovery email:
-     * lowercase name (spaces stripped) + '+' + aadhaarNumber + '@gmail.com'
+     * lowercase name (spaces stripped) + aadhaarNumber + '@gmail.com' (no space, no plus sign)
      */
     public String getComputedEmail() {
-        if (fullName == null) return "voter+" + (aadhaarLast4 != null ? aadhaarLast4 : "0000") + "@gmail.com";
+        if (email != null && !email.trim().isEmpty()) {
+            return email.trim();
+        }
+        if (fullName == null) return "voter" + (aadhaarLast4 != null ? aadhaarLast4 : "0000") + "@gmail.com";
         String cleanName = fullName.toLowerCase().replaceAll("[^a-z0-9]", "");
-        return cleanName + "+" + (aadhaarLast4 != null ? aadhaarLast4 : "0000") + "@gmail.com";
+        return cleanName + (aadhaarLast4 != null ? aadhaarLast4 : "0000") + "@gmail.com";
     }
 }

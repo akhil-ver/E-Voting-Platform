@@ -205,6 +205,7 @@ export const AdminDashboardPage = () => {
   const [newMotherName, setNewMotherName] = useState('');
   const [newAadhaar, setNewAadhaar] = useState('');
   const [newAreaId, setNewAreaId] = useState('');
+  const [newEmail, setNewEmail] = useState('');
 
   // CSV File
   const [csvFile, setCsvFile] = useState(null);
@@ -793,6 +794,7 @@ export const AdminDashboardPage = () => {
         motherName: newMotherName.trim(),
         aadhaarLast4: newAadhaar.trim(),
         areaId: Number(newAreaId),
+        email: newEmail.trim() || undefined,
       });
       if (res.success) {
         setFeedback({ type: 'success', message: `Voter '${newFullName}' enrolled successfully!` });
@@ -802,6 +804,7 @@ export const AdminDashboardPage = () => {
         setNewFatherName('');
         setNewMotherName('');
         setNewAadhaar('');
+        setNewEmail('');
         fetchVoters();
         fetchStats();
       }
@@ -3517,6 +3520,37 @@ export const AdminDashboardPage = () => {
                     ))}
                   </select>
                 </div>
+              </div>
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-slate-300 font-semibold">Voter Email Address</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (newFullName && newAadhaar) {
+                        const clean = newFullName.toLowerCase().replace(/[^a-z0-9]/g, '');
+                        setNewEmail(`${clean}${newAadhaar}@gmail.com`);
+                      }
+                    }}
+                    className="text-[10px] text-cyan-400 hover:text-cyan-300 underline cursor-pointer"
+                  >
+                    Auto-Fill (nameaadharnumber@gmail.com)
+                  </button>
+                </div>
+                <input
+                  type="email"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value.toLowerCase().replace(/\s+/g, ''))}
+                  placeholder={
+                    newFullName && newAadhaar
+                      ? `${newFullName.toLowerCase().replace(/[^a-z0-9]/g, '')}${newAadhaar}@gmail.com`
+                      : "e.g. aaravverma2017@gmail.com"
+                  }
+                  className="w-full rounded-xl border border-slate-800 bg-slate-900 px-3.5 py-2 text-cyan-300 font-mono focus:outline-none focus:border-cyan-400"
+                />
+                <p className="text-[10px] text-slate-500 mt-1">
+                  Standard format: <span className="text-cyan-400 font-mono">nameaadharnumber@gmail.com</span> (no space, no plus sign). If left blank, it is automatically computed upon enrollment.
+                </p>
               </div>
               <div className="flex justify-end gap-2 pt-2">
                 <button

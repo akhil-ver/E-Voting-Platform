@@ -210,7 +210,7 @@ export const RegisterPage = () => {
                       <div>
                         <span className="text-[10px] text-slate-400 block uppercase">Assigned Recovery Email</span>
                         <span className="font-mono text-xs font-bold text-cyan-300">
-                          {verifiedRecord.email || (verifiedRecord.fullName ? `${verifiedRecord.fullName.toLowerCase().replace(/\s+/g, '')}+${aadhaarLast4}@gmail.com` : '')}
+                          {verifiedRecord.email || (verifiedRecord.fullName ? `${verifiedRecord.fullName.toLowerCase().replace(/[^a-z0-9]/g, '')}${aadhaarLast4}@gmail.com` : '')}
                         </span>
                       </div>
                       <span className="text-[10px] text-emerald-400 font-semibold bg-emerald-950/60 border border-emerald-500/30 px-2.5 py-0.5 rounded-full self-start sm:self-auto">

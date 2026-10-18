@@ -391,8 +391,8 @@ export const AreaVoterListPage = () => {
                 </tr>
               ) : (
                 filteredVoters.map((v) => {
-                  const voterLast4 = v.aadhaarLast4 || (v.email?.split('+')[1]?.split('@')[0]) || '';
-                  const voterEmail = v.email || (v.fullName ? `${v.fullName.toLowerCase().replace(/\s+/g, '')}+${voterLast4 || '••••'}@gmail.com` : '');
+                  const voterLast4 = v.aadhaarLast4 || (v.email?.match(/(\d{4})@gmail\.com$/)?.[1]) || '';
+                  const voterEmail = v.email || (v.fullName ? `${v.fullName.toLowerCase().replace(/[^a-z0-9]/g, '')}${voterLast4 || '••••'}@gmail.com` : '');
                   return (
                     <tr key={v.id} className="hover:bg-slate-900/40 transition-colors">
                       <td className="py-3 px-4 font-mono font-bold text-cyan-300">

@@ -55,11 +55,12 @@ public class VoterController {
         String fatherName = (String) payload.get("fatherName");
         String motherName = (String) payload.get("motherName");
         String aadhaarLast4 = (String) payload.get("aadhaarLast4");
+        String email = (String) payload.get("email");
         Long areaId = Long.valueOf(payload.get("areaId").toString());
 
         String adminUsername = authentication != null ? authentication.getName() : "ADMIN-001";
         VoterRecordDto created = voterService.addVoterRecord(voterId, fullName, fatherName, motherName,
-                aadhaarLast4, areaId, adminUsername, com.sovereign.democracy.util.ClientIpUtil.getClientIp(request));
+                aadhaarLast4, areaId, email, adminUsername, com.sovereign.democracy.util.ClientIpUtil.getClientIp(request));
 
         return ResponseEntity.ok(ApiResponse.ok("Voter record enrolled successfully", created));
     }

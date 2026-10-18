@@ -63,6 +63,7 @@ public class VoterService {
     @Transactional
     public VoterRecordDto addVoterRecord(String voterId, String fullName, String fatherName,
                                          String motherName, String aadhaarLast4, Long areaId,
+                                         String email,
                                          String adminUsername, String ipAddress) {
         if (voterRecordRepository.existsByVoterIdIgnoreCase(voterId)) {
             throw new BadRequestException("Duplicate Voter Record: Election ID '" + voterId + "' is already enrolled in the system.");
@@ -75,14 +76,18 @@ public class VoterService {
         Area area = areaRepository.findById(areaId)
                 .orElseThrow(() -> new ResourceNotFoundException("Specified Area ID " + areaId + " does not exist."));
 
+        String cleanEmail = (email != null && !email.trim().isEmpty())
+                ? email.trim().toLowerCase().replaceAll("\\s+", "")
+                : (fullName.toLowerCase().replaceAll("[^a-z0-9]", "") + aadhaarLast4.trim() + "@gmail.com");
+
         VoterRecord record = new VoterRecord(voterId.toUpperCase().trim(), fullName.trim(),
                 fatherName != null ? fatherName.trim() : null,
                 motherName != null ? motherName.trim() : null,
-                aadhaarLast4.trim(), area);
+                aadhaarLast4.trim(), area, cleanEmail);
 
         VoterRecord saved = voterRecordRepository.save(record);
         auditLogService.logAction(adminUsername, "ADMIN", "ADD_VOTER_RECORD", "Voter:" + saved.getVoterId(),
-                "Added voter " + saved.getFullName() + " to area " + area.getName(), ipAddress);
+                "Added voter " + saved.getFullName() + " (" + cleanEmail + ") to area " + area.getName(), ipAddress);
 
         return mapToDto(saved);
     }
@@ -110,10 +115,13 @@ public class VoterService {
                     String motherName = parts[3].trim();
                     String aadhaarLast4 = parts[4].trim();
                     String areaName = parts[5].trim();
+                    String csvEmail = (parts.length >= 7 && parts[6].contains("@"))
+                            ? parts[6].trim().toLowerCase().replaceAll("\\s+", "")
+                            : (fullName.toLowerCase().replaceAll("[^a-z0-9]", "") + aadhaarLast4 + "@gmail.com");
 
                     if (!voterRecordRepository.existsByVoterIdIgnoreCase(voterId) && aadhaarLast4.length() == 4) {
                         areaRepository.findByNameIgnoreCase(areaName).ifPresent(area -> {
-                            recordsToSave.add(new VoterRecord(voterId, fullName, fatherName, motherName, aadhaarLast4, area));
+                            recordsToSave.add(new VoterRecord(voterId, fullName, fatherName, motherName, aadhaarLast4, area, csvEmail));
                         });
                     }
                 }

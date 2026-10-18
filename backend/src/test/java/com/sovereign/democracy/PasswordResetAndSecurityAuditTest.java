@@ -226,10 +226,10 @@ public class PasswordResetAndSecurityAuditTest {
     }
 
     @Test
-    @DisplayName("Voter can request password reset using computed email format name+aadhaar@gmail.com")
+    @DisplayName("Voter can request password reset using computed email format nameaadharnumber@gmail.com")
     void testVoterForgotPasswordUsingComputedEmail() {
         // Create test voter with computed email
-        String expectedEmail = "testvoter+9876@gmail.com";
+        String expectedEmail = "testvoter9876@gmail.com";
         UserAccount voterAcc = new UserAccount("VOT-TEST-9999", passwordEncoder.encode("Secret123!"), Role.USER, null);
         voterAcc.setRecoveryEmail(expectedEmail);
         userAccountRepository.save(voterAcc);

@@ -205,7 +205,7 @@ export const VoterDashboardPage = () => {
             Recovery Email
           </span>
           <span className="text-sm font-bold font-mono text-cyan-300 block truncate" title={user?.email}>
-            {user?.email || (user?.fullName ? `${user.fullName.toLowerCase().replace(/\s+/g, '')}+••••@gmail.com` : 'Not Set')}
+            {user?.email || (user?.fullName ? `${user.fullName.toLowerCase().replace(/[^a-z0-9]/g, '')}••••@gmail.com` : 'Not Set')}
           </span>
           <span className="text-xs text-slate-400 flex items-center gap-1">
             <ShieldCheck className="h-3 w-3 text-emerald-400" />
