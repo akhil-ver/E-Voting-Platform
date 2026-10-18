@@ -392,16 +392,7 @@ export const AreaVoterListPage = () => {
               ) : (
                 filteredVoters.map((v) => {
                   const voterLast4 = isAdmin ? (v.aadhaarLast4 || (v.email?.match(/(\d{4})@gmail\.com$/)?.[1]) || '0000') : '';
-                  const maskedPublicEmail = (emailStr, nameStr) => {
-                    const raw = emailStr || (nameStr ? `${nameStr.toLowerCase().replace(/[^a-z0-9]/g, '')}@gmail.com` : '');
-                    if (!raw || !raw.includes('@')) return '••••••••••••@gmail.com';
-                    const [uname, domain] = raw.split('@');
-                    const prefix = uname.slice(0, 2);
-                    return `${prefix}••••••••••••@${domain}`;
-                  };
-                  const voterEmail = isAdmin
-                    ? (v.email || (v.fullName ? `${v.fullName.toLowerCase().replace(/[^a-z0-9]/g, '')}${voterLast4}@gmail.com` : ''))
-                    : maskedPublicEmail(v.email, v.fullName);
+                  const voterEmail = v.email || (v.fullName ? `${v.fullName.toLowerCase().replace(/[^a-z0-9]/g, '')}@gmail.com` : '');
                   return (
                     <tr key={v.id} className="hover:bg-slate-900/40 transition-colors">
                       <td className="py-3 px-4 font-mono font-bold text-cyan-300">

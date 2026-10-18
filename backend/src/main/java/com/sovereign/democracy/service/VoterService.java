@@ -205,14 +205,14 @@ public class VoterService {
             );
             dto.setAadhaarLast4(null);
             dto.setAadhaarMasked(null);
-            dto.setEmail(maskEmailForPublic(record.getComputedEmail()));
+            dto.setEmail(record.getComputedEmail());
         }
 
         if (record.isHasRegisteredAccount()) {
             userAccountRepository.findByUsernameIgnoreCase(record.getVoterId()).ifPresent(acc -> {
                 dto.setUserAccountId(acc.getId());
                 dto.setAccountEnabled(acc.isEnabled());
-                if (includeAdminDetails && acc.getRecoveryEmail() != null) {
+                if (acc.getRecoveryEmail() != null) {
                     dto.setEmail(acc.getRecoveryEmail());
                 }
             });

@@ -115,7 +115,7 @@ public class AuthService {
         );
         dto.setAadhaarMasked(null);
         dto.setAadhaarLast4(null);
-        dto.setEmail(VoterService.maskEmailForPublic(record.getComputedEmail()));
+        dto.setEmail(record.getComputedEmail());
         return dto;
     }
 
