@@ -38,6 +38,14 @@ public class VoterController {
         return ResponseEntity.ok(ApiResponse.ok("Voters retrieved successfully", result));
     }
 
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<VoterRecordDto>> getMyProfile(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(401).body(ApiResponse.error("Authentication required to retrieve voter profile"));
+        }
+        return ResponseEntity.ok(ApiResponse.ok("Voter profile retrieved successfully", voterService.getMyProfile(authentication.getName())));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<VoterRecordDto>> getVoterById(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.ok("Voter record retrieved", voterService.getVoterById(id)));

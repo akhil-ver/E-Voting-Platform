@@ -46,7 +46,8 @@ public class VoterService {
     public VoterRecordDto getVoterById(Long id) {
         VoterRecord record = voterRecordRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Voter record not found with id: " + id));
-        return mapToDto(record, isCurrentUserAdmin());
+        boolean canSeeDetails = isCurrentUserAdmin() || isCurrentVoter(record);
+        return mapToDto(record, canSeeDetails);
     }
 
     private boolean isCurrentUserAdmin() {
@@ -58,6 +59,23 @@ public class VoterService {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    private boolean isCurrentVoter(VoterRecord record) {
+        try {
+            org.springframework.security.core.Authentication auth =
+                    org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+            return auth != null && auth.isAuthenticated() &&
+                    auth.getName().equalsIgnoreCase(record.getVoterId());
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public VoterRecordDto getMyProfile(String username) {
+        VoterRecord record = voterRecordRepository.findByVoterIdIgnoreCase(username)
+                .orElseThrow(() -> new ResourceNotFoundException("Voter profile not found for user: " + username));
+        return mapToDto(record, true);
     }
 
     @Transactional
@@ -155,6 +173,7 @@ public class VoterService {
 
     public VoterRecordDto mapToDto(VoterRecord record, boolean includeAdminDetails) {
         VoterRecordDto dto;
+        boolean isAdmin = isCurrentUserAdmin();
         if (includeAdminDetails) {
             dto = new VoterRecordDto(
                     record.getId(),
@@ -162,14 +181,15 @@ public class VoterService {
                     record.getFullName(),
                     record.getFatherName(),
                     record.getMotherName(),
-                    record.getAadhaarLast4(),
+                    isAdmin ? record.getAadhaarLast4() : null,
                     record.getArea().getName(),
                     record.getArea().getId(),
                     record.isEligible(),
                     record.isHasRegisteredAccount()
             );
             dto.setEmail(record.getComputedEmail());
-            dto.setAadhaarLast4(record.getAadhaarLast4());
+            dto.setAadhaarLast4(isAdmin ? record.getAadhaarLast4() : null);
+            dto.setAadhaarMasked(isAdmin && record.getAadhaarLast4() != null ? "•••• •••• " + record.getAadhaarLast4() : null);
         } else {
             dto = new VoterRecordDto(
                     record.getId(),

@@ -28,6 +28,7 @@ export const VoterDashboardPage = () => {
 
   const [elections, setElections] = useState([]);
   const [receipts, setReceipts] = useState([]);
+  const [profileRecord, setProfileRecord] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [copiedHash, setCopiedHash] = useState(null);
   const [copiedCode, setCopiedCode] = useState(null);
@@ -40,10 +41,12 @@ export const VoterDashboardPage = () => {
       const results = await Promise.allSettled([
         axiosClient.get('/elections'),
         axiosClient.get('/voting/my-receipts'),
+        axiosClient.get('/voters/me'),
       ]);
 
       const electionsSettled = results[0];
       const receiptsSettled = results[1];
+      const meSettled = results[2];
 
       let allElections = [];
       if (electionsSettled.status === 'fulfilled' && electionsSettled.value?.success && electionsSettled.value?.data) {
@@ -55,15 +58,26 @@ export const VoterDashboardPage = () => {
         userReceipts = receiptsSettled.value.data;
       }
 
+      if (meSettled.status === 'fulfilled' && meSettled.value?.success && meSettled.value?.data) {
+        setProfileRecord(meSettled.value.data);
+      }
+
       // Filter elections to only those relevant to user's assigned area
-      const areaElections = (user?.areaName || user?.areaId)
+      const activeAreaName = meSettled.status === 'fulfilled' && meSettled.value?.data?.areaName
+        ? meSettled.value.data.areaName
+        : user?.areaName;
+      const activeAreaId = meSettled.status === 'fulfilled' && meSettled.value?.data?.areaId
+        ? meSettled.value.data.areaId
+        : user?.areaId;
+
+      const areaElections = (activeAreaName || activeAreaId)
         ? allElections.filter(
             (e) =>
-              (user?.areaId && (e.areaId === user.areaId || e.area?.id === user.areaId)) ||
-              (user?.areaName && (
-                e.areaName?.toLowerCase() === user.areaName?.toLowerCase() ||
-                e.area?.name?.toLowerCase() === user.areaName?.toLowerCase() ||
-                e.constituencyName?.toLowerCase() === user.areaName?.toLowerCase()
+              (activeAreaId && (e.areaId === activeAreaId || e.area?.id === activeAreaId)) ||
+              (activeAreaName && (
+                e.areaName?.toLowerCase() === activeAreaName?.toLowerCase() ||
+                e.area?.name?.toLowerCase() === activeAreaName?.toLowerCase() ||
+                e.constituencyName?.toLowerCase() === activeAreaName?.toLowerCase()
               ))
           )
         : allElections;
@@ -114,6 +128,13 @@ export const VoterDashboardPage = () => {
   };
 
   const votedElectionIds = new Set(receipts.map((r) => r.electionId));
+
+  const displayFullName = profileRecord?.fullName || user?.fullName || user?.username;
+  const displayVoterId = profileRecord?.voterId || user?.voterId || user?.username;
+  const displayFatherName = profileRecord?.fatherName || user?.fatherName || '—';
+  const displayMotherName = profileRecord?.motherName || user?.motherName || '—';
+  const displayAreaName = profileRecord?.areaName || user?.areaName || 'Demo City';
+  const displayEmail = profileRecord?.email || user?.email || (user?.fullName ? `${user.fullName.toLowerCase().replace(/[^a-z0-9]/g, '')}@gmail.com` : '—');
 
   return (
     <div className="py-8 space-y-8 animate-fadeIn">
@@ -170,7 +191,52 @@ export const VoterDashboardPage = () => {
         </div>
       )}
 
-      {/* Profile & Voter Identity Card */}
+      {/* Verified Citizen Electoral Roll Card - Matching Roll Verification */}
+      <div className="rounded-2xl border border-emerald-500/40 bg-emerald-950/20 p-5 space-y-3 shadow-lg shadow-emerald-950/20 animate-fadeIn">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-500/20 pb-3">
+          <div className="flex items-center gap-2 text-emerald-400 text-sm font-bold">
+            <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" />
+            <span>Citizen Record Verified on Authorized Electoral Roll</span>
+          </div>
+          <span className="text-[10px] text-emerald-400 font-semibold bg-emerald-950/80 border border-emerald-500/30 px-3 py-1 rounded-full self-start sm:self-auto font-mono">
+            Active Voter Roster • Official Identity
+          </span>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs pt-1">
+          <div>
+            <span className="text-[10px] text-slate-400 block uppercase font-bold tracking-wider">Voter Name</span>
+            <span className="font-bold text-white text-sm">{displayFullName}</span>
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-400 block uppercase font-bold tracking-wider">Father's Name</span>
+            <span className="font-medium text-slate-200 text-sm">{displayFatherName}</span>
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-400 block uppercase font-bold tracking-wider">Mother's Name</span>
+            <span className="font-medium text-slate-200 text-sm">{displayMotherName}</span>
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-400 block uppercase font-bold tracking-wider">City / Area</span>
+            <span className="font-bold text-cyan-300 text-sm">{displayAreaName}</span>
+          </div>
+          <div className="col-span-2 sm:col-span-4 border-t border-emerald-500/20 pt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <span className="text-[10px] text-slate-400 block uppercase font-bold tracking-wider">Assigned Recovery Email</span>
+              <span className="font-mono text-sm font-bold text-cyan-300">
+                {displayEmail}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-slate-400">
+              <span className="font-mono text-xs text-slate-300">Election ID: <strong className="text-cyan-400">{displayVoterId}</strong></span>
+              <span className="text-[10px] text-emerald-400 font-semibold bg-emerald-950/60 border border-emerald-500/30 px-2.5 py-0.5 rounded-full">
+                Official Roll Email
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Profile & Voter Identity Card Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Full Name & Role */}
         <div className="rounded-3xl border border-slate-800 bg-slate-950/70 p-5 space-y-1">
@@ -178,7 +244,7 @@ export const VoterDashboardPage = () => {
             Registered Citizen Name
           </span>
           <span className="text-lg font-bold text-white block truncate">
-            {user?.fullName || user?.username}
+            {displayFullName}
           </span>
           <span className="text-xs text-cyan-400 font-mono flex items-center gap-1">
             <User className="h-3 w-3" />
@@ -192,10 +258,10 @@ export const VoterDashboardPage = () => {
             Electoral Identity
           </span>
           <span className="text-base font-bold font-mono text-cyan-300 block">
-            {user?.voterId || user?.username}
+            {displayVoterId}
           </span>
           <span className="text-[11px] text-slate-400 font-mono">
-            Masked: {maskVoterId(user?.voterId || user?.username)}
+            Masked: {maskVoterId(displayVoterId)}
           </span>
         </div>
 
@@ -204,8 +270,8 @@ export const VoterDashboardPage = () => {
           <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">
             Recovery Email
           </span>
-          <span className="text-sm font-bold font-mono text-cyan-300 block truncate" title={user?.email}>
-            {user?.email || (user?.fullName ? `${user.fullName.toLowerCase().replace(/[^a-z0-9]/g, '')}••••@gmail.com` : 'Not Set')}
+          <span className="text-sm font-bold font-mono text-cyan-300 block truncate" title={displayEmail}>
+            {displayEmail}
           </span>
           <span className="text-xs text-slate-400 flex items-center gap-1">
             <ShieldCheck className="h-3 w-3 text-emerald-400" />
@@ -219,7 +285,7 @@ export const VoterDashboardPage = () => {
             Assigned Constituency
           </span>
           <span className="text-lg font-bold text-white block">
-            {user?.areaName || 'Demo City'}
+            {displayAreaName}
           </span>
           <span className="text-xs text-slate-400 flex items-center gap-1">
             <MapPin className="h-3 w-3 text-cyan-400" />

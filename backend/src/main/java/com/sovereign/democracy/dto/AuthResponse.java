@@ -13,14 +13,20 @@ public class AuthResponse {
     private Long areaId;
 
     private String email;
+    private String fatherName;
+    private String motherName;
 
     public AuthResponse() {}
 
     public AuthResponse(String token, String username, Role role, String fullName, String voterId, String areaName, Long areaId) {
-        this(token, username, role, fullName, voterId, areaName, areaId, null);
+        this(token, username, role, fullName, voterId, areaName, areaId, null, null, null);
     }
 
     public AuthResponse(String token, String username, Role role, String fullName, String voterId, String areaName, Long areaId, String email) {
+        this(token, username, role, fullName, voterId, areaName, areaId, email, null, null);
+    }
+
+    public AuthResponse(String token, String username, Role role, String fullName, String voterId, String areaName, Long areaId, String email, String fatherName, String motherName) {
         this.token = token;
         this.username = username;
         this.role = role;
@@ -29,7 +35,15 @@ public class AuthResponse {
         this.areaName = areaName;
         this.areaId = areaId;
         this.email = email;
+        this.fatherName = fatherName;
+        this.motherName = motherName;
     }
+
+    public String getFatherName() { return fatherName; }
+    public void setFatherName(String fatherName) { this.fatherName = fatherName; }
+
+    public String getMotherName() { return motherName; }
+    public void setMotherName(String motherName) { this.motherName = motherName; }
 
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
