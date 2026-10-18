@@ -67,7 +67,11 @@ public class VoterRecordDto {
     public void setAccountEnabled(Boolean accountEnabled) { this.accountEnabled = accountEnabled; }
 
     private String email;
+    private String aadhaarLast4;
 
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
+
+    public String getAadhaarLast4() { return aadhaarLast4; }
+    public void setAadhaarLast4(String aadhaarLast4) { this.aadhaarLast4 = aadhaarLast4; }
 }

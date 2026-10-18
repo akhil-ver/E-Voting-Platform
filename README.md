@@ -98,20 +98,20 @@ Ordinary citizens who register against existing authorized electoral records.
 
 | City / Area | Constituency | Election ID | Aadhaar Last 4 | Recovery Email | Citizen Name | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Mumbai** | Mumbai South | `VOT-MUM-1001` | `2017` | `aaravverma+2017@gmail.com` | Aarav Verma | Registered (`Voter@123`) |
-| **Mumbai** | Mumbai South | `VOT-MUM-1002` | `2034` | `ananyaverma+2034@gmail.com` | Ananya Verma | Registered (`Voter@123`) |
-| **Mumbai** | Mumbai South | `VOT-MUM-1003` | `2051` | `rahulverma+2051@gmail.com` | Rahul Verma | Registered (`Voter@123`) |
-| **Delhi** | New Delhi Central | `VOT-DEL-2001` | `3017` | `aaravdeshmukh+3017@gmail.com` | Aarav Deshmukh | Registered (`Voter@123`) |
-| **Bengaluru**| Bengaluru South | `VOT-BLR-3001` | `4017` | `aaravjadhav+4017@gmail.com` | Aarav Jadhav | Registered (`Voter@123`) |
-| **Pune** | Pune Metro East | `VOT-PUN-4001` | `5017` | `aaravkulkarni+5017@gmail.com` | Aarav Kulkarni | Registered (`Voter@123`) |
-| **Hyderabad**| Old City & Cyber | `VOT-HYD-5001` | `6017` | `aaravmehta+6017@gmail.com` | Aarav Mehta | Registered (`Voter@123`) |
-| **Kolkata** | North Heritage | `VOT-KOL-6001` | `7017` | `aaravreddy+7017@gmail.com` | Aarav Reddy | Registered (`Voter@123`) |
-| **Chennai** | Central Urban | `VOT-CHN-7001` | `8017` | `aaravnair+8017@gmail.com` | Aarav Nair | Registered (`Voter@123`) |
-| **Ahmedabad**| West Industrial | `VOT-AMD-8001` | `9017` | `aaraviyer+9017@gmail.com` | Aarav Iyer | Registered (`Voter@123`) |
-| **Jaipur** | Heritage Ward | `VOT-JAI-9001` | `1017` | `aaravsingh+1017@gmail.com` | Aarav Singh | Registered (`Voter@123`) |
-| **Lucknow** | Central Awadh | `VOT-LKO-10001`| `2017` | `aaravgupta+2017@gmail.com` | Aarav Gupta | Registered (`Voter@123`) |
+| **Mumbai** | Mumbai South | `VOT-MUM-1001` | `2017` | `aaravverma+2017@gmail.com` | Aarav Verma | Active Account (`pass123`) |
+| **Mumbai** | Mumbai South | `VOT-MUM-1002` | `2034` | `ananyaverma+2034@gmail.com` | Ananya Verma | Ready to Register (Verify: `2034`) |
+| **Mumbai** | Mumbai South | `VOT-MUM-1003` | `2051` | `rahulverma+2051@gmail.com` | Rahul Verma | Ready to Register (Verify: `2051`) |
+| **Delhi** | New Delhi Central | `VOT-DEL-2001` | `3017` | `aaravdeshmukh+3017@gmail.com` | Aarav Deshmukh | Ready to Register (Verify: `3017`) |
+| **Bengaluru**| Bengaluru South | `VOT-BLR-3001` | `4017` | `aaravjadhav+4017@gmail.com` | Aarav Jadhav | Ready to Register (Verify: `4017`) |
+| **Pune** | Pune Metro East | `VOT-PUN-4001` | `5017` | `aaravkulkarni+5017@gmail.com` | Aarav Kulkarni | Ready to Register (Verify: `5017`) |
+| **Hyderabad**| Old City & Cyber | `VOT-HYD-5001` | `6017` | `aaravmehta+6017@gmail.com` | Aarav Mehta | Ready to Register (Verify: `6017`) |
+| **Kolkata** | North Heritage | `VOT-KOL-6001` | `7017` | `aaravreddy+7017@gmail.com` | Aarav Reddy | Ready to Register (Verify: `7017`) |
+| **Chennai** | Central Urban | `VOT-CHN-7001` | `8017` | `aaravnair+8017@gmail.com` | Aarav Nair | Ready to Register (Verify: `8017`) |
+| **Ahmedabad**| West Industrial | `VOT-AMD-8001` | `9017` | `aaraviyer+9017@gmail.com` | Aarav Iyer | Ready to Register (Verify: `9017`) |
+| **Jaipur** | Heritage Ward | `VOT-JAI-9001` | `1017` | `aaravsingh+1017@gmail.com` | Aarav Singh | Ready to Register (Verify: `1017`) |
+| **Lucknow** | Central Awadh | `VOT-LKO-10001`| `2017` | `aaravgupta+2017@gmail.com` | Aarav Gupta | Ready to Register (Verify: `2017`) |
 
-*(Total seeded roll: 10 Cities &times; 50 Records = 500 Records. All 500 citizen accounts have registered user profiles with corresponding computed recovery emails).*
+*(Total seeded roll: 10 Cities &times; 50 Records = 500 Records. Exactly 1 demonstration account in Mumbai (`VOT-MUM-1001`) is active; all other 499 citizens can register by verifying their 4-digit Aadhaar number and creating their password).*
 
 ---
 

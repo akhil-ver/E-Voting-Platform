@@ -69,10 +69,14 @@ public class AuthService {
         String areaName = account.getRole() == Role.ADMIN ? "National Central Command" : account.getVoterRecord().getArea().getName();
         Long areaId = account.getRole() == Role.ADMIN ? null : account.getVoterRecord().getArea().getId();
 
+        String email = account.getRole() == Role.ADMIN
+                ? (account.getRecoveryEmail() != null ? account.getRecoveryEmail() : "akhilv.verma07@gmail.com")
+                : (account.getRecoveryEmail() != null ? account.getRecoveryEmail() : account.getVoterRecord().getComputedEmail());
+
         auditLogService.logAction(account.getUsername(), account.getRole().name(), "LOGIN_SUCCESS", "Auth",
                 "Successful authentication from " + ipAddress, ipAddress);
 
-        return new AuthResponse(token, account.getUsername(), account.getRole(), fullName, voterId, areaName, areaId);
+        return new AuthResponse(token, account.getUsername(), account.getRole(), fullName, voterId, areaName, areaId, email);
     }
 
     public VoterRecordDto verifyVoterRecord(VerifyRecordRequest request) {
@@ -150,7 +154,8 @@ public class AuthService {
                 record.getFullName(),
                 record.getVoterId(),
                 record.getArea().getName(),
-                record.getArea().getId()
+                record.getArea().getId(),
+                userAccount.getRecoveryEmail()
         );
     }
 }

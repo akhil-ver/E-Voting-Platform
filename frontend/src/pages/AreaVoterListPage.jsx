@@ -174,6 +174,12 @@ export const AreaVoterListPage = () => {
           <p className="text-xs text-slate-400 mt-1">
             Browse verified citizens enrolled by the election administration across 10 demonstration metropolitan areas.
           </p>
+          <div className="flex items-center gap-2 mt-2">
+            <span className="text-[11px] text-slate-400">Chief Election Administrator:</span>
+            <span className="text-[11px] font-mono font-bold text-cyan-300 bg-cyan-950/70 border border-cyan-500/30 px-2.5 py-0.5 rounded-full">
+              akhilv.verma07@gmail.com
+            </span>
+          </div>
         </div>
 
         <button
@@ -362,9 +368,9 @@ export const AreaVoterListPage = () => {
             <thead className="bg-slate-900/90 text-slate-400 border-b border-slate-800 uppercase tracking-wider font-semibold">
               <tr>
                 <th className="py-3 px-4">Election ID</th>
-                <th className="py-3 px-4">Citizen Full Name</th>
+                <th className="py-3 px-4">Citizen Full Name &amp; Email</th>
                 <th className="py-3 px-4">Assigned Area</th>
-                <th className="py-3 px-4">Data Privacy</th>
+                <th className="py-3 px-4">Verification &amp; Aadhaar</th>
                 <th className="py-3 px-4">Account Status</th>
                 <th className="py-3 px-4 text-right">{isAdmin ? 'Admin Access Controls' : 'Action'}</th>
               </tr>
@@ -385,13 +391,18 @@ export const AreaVoterListPage = () => {
                 </tr>
               ) : (
                 filteredVoters.map((v) => {
+                  const voterLast4 = v.aadhaarLast4 || (v.email?.split('+')[1]?.split('@')[0]) || '';
+                  const voterEmail = v.email || (v.fullName ? `${v.fullName.toLowerCase().replace(/\s+/g, '')}+${voterLast4 || '••••'}@gmail.com` : '');
                   return (
                     <tr key={v.id} className="hover:bg-slate-900/40 transition-colors">
                       <td className="py-3 px-4 font-mono font-bold text-cyan-300">
                         {v.voterId}
                       </td>
                       <td className="py-3 px-4 font-bold text-white">
-                        {v.fullName}
+                        <div>{v.fullName}</div>
+                        <div className="text-[11px] font-mono font-normal text-cyan-400 mt-0.5">
+                          {voterEmail}
+                        </div>
                       </td>
                       <td className="py-3 px-4 text-slate-300">
                         {v.areaName}
@@ -399,8 +410,11 @@ export const AreaVoterListPage = () => {
                       <td className="py-3 px-4 text-slate-400">
                         <span className="inline-flex items-center gap-1 text-[11px] text-emerald-400/90 font-medium">
                           <ShieldCheck className="h-3 w-3 text-emerald-400" />
-                          <span>Protected • Zero PII Leaked</span>
+                          <span>Protected • Zero PII</span>
                         </span>
+                        <div className="text-[11px] font-mono text-slate-400 mt-0.5">
+                          Aadhaar: •••• •••• <span className="text-amber-300 font-bold">{voterLast4 || '••••'}</span>
+                        </div>
                       </td>
                       <td className="py-3 px-4">
                         {v.hasRegisteredAccount ? (
@@ -478,9 +492,10 @@ export const AreaVoterListPage = () => {
                           ) : (
                             <button
                               type="button"
-                              onClick={() =>
-                                navigate(`/register?voterId=${encodeURIComponent(v.voterId)}`)
-                              }
+                              onClick={() => {
+                                const last4 = v.aadhaarLast4 || (v.email?.split('+')[1]?.split('@')[0]) || '';
+                                navigate(`/register?voterId=${encodeURIComponent(v.voterId)}${last4 ? `&aadhaar=${encodeURIComponent(last4)}` : ''}`);
+                              }}
                               className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-bold transition-all cursor-pointer"
                             >
                               <UserPlus className="h-3 w-3" />

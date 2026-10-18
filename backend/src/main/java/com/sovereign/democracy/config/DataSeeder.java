@@ -116,48 +116,53 @@ public class DataSeeder implements CommandLineRunner {
             log.info("Verified active OPEN election {} for area {} with candidates", esc.electionCode, area.getName());
         }
 
-        // 5. Ensure all voter records have corresponding UserAccounts with standard recovery emails (name+aadhaar@gmail.com)
+        // 5. Ensure ONLY ONE Mumbai voter account is active (VOT-MUM-1001), while all other voters are unregistered
         List<VoterRecord> allVoters = voterRecordRepository.findAll();
-        Map<String, UserAccount> existingAccountMap = new HashMap<>();
-        for (UserAccount ua : userAccountRepository.findAll()) {
-            existingAccountMap.put(ua.getUsername().toUpperCase(), ua);
-        }
-
-        String defaultVoterPasswordHash = null;
-        List<UserAccount> accountsToSave = new ArrayList<>();
         List<VoterRecord> votersToUpdate = new ArrayList<>();
+        List<UserAccount> extraAccountsToDelete = new ArrayList<>();
 
         for (VoterRecord vr : allVoters) {
-            String expectedEmail = vr.getComputedEmail();
-            UserAccount ua = existingAccountMap.get(vr.getVoterId().toUpperCase());
-            if (ua != null) {
-                if (!expectedEmail.equalsIgnoreCase(ua.getRecoveryEmail())) {
-                    ua.setRecoveryEmail(expectedEmail);
-                    accountsToSave.add(ua);
-                }
-            } else {
-                if (defaultVoterPasswordHash == null) {
-                    defaultVoterPasswordHash = passwordEncoder.encode("Voter@123");
-                }
-                UserAccount newUa = new UserAccount(
-                        vr.getVoterId(),
-                        defaultVoterPasswordHash,
-                        Role.USER,
-                        vr
-                );
-                newUa.setRecoveryEmail(expectedEmail);
-                accountsToSave.add(newUa);
+            boolean isMumbaiActiveVoter = vr.getVoterId().equalsIgnoreCase("VOT-MUM-1001");
+            if (isMumbaiActiveVoter) {
                 if (!vr.isHasRegisteredAccount()) {
                     vr.setHasRegisteredAccount(true);
+                    votersToUpdate.add(vr);
+                }
+                Optional<UserAccount> uaOpt = userAccountRepository.findByUsernameIgnoreCase("VOT-MUM-1001");
+                if (uaOpt.isEmpty()) {
+                    UserAccount activeUser = new UserAccount(
+                            "VOT-MUM-1001",
+                            passwordEncoder.encode("pass123"),
+                            Role.USER,
+                            vr
+                    );
+                    activeUser.setRecoveryEmail(vr.getComputedEmail());
+                    userAccountRepository.save(activeUser);
+                    log.info("Created single active Mumbai voter account: VOT-MUM-1001 (Recovery Email: {})", vr.getComputedEmail());
+                } else {
+                    UserAccount activeUser = uaOpt.get();
+                    activeUser.setRecoveryEmail(vr.getComputedEmail());
+                    userAccountRepository.save(activeUser);
+                }
+            } else {
+                if (vr.isHasRegisteredAccount()) {
+                    vr.setHasRegisteredAccount(false);
                     votersToUpdate.add(vr);
                 }
             }
         }
 
-        if (!accountsToSave.isEmpty()) {
-            userAccountRepository.saveAll(accountsToSave);
-            log.info("Synchronized recovery emails for {} voter accounts (format: name+aadhaar@gmail.com)", accountsToSave.size());
+        // Delete any extra citizen accounts seeded previously so only VOT-MUM-1001 remains active
+        for (UserAccount ua : userAccountRepository.findAll()) {
+            if (ua.getRole() == Role.USER && !ua.getUsername().equalsIgnoreCase("VOT-MUM-1001")) {
+                extraAccountsToDelete.add(ua);
+            }
         }
+        if (!extraAccountsToDelete.isEmpty()) {
+            userAccountRepository.deleteAll(extraAccountsToDelete);
+            log.info("Cleaned up {} unneeded pre-seeded voter accounts. Only VOT-MUM-1001 remains active.", extraAccountsToDelete.size());
+        }
+
         if (!votersToUpdate.isEmpty()) {
             voterRecordRepository.saveAll(votersToUpdate);
         }

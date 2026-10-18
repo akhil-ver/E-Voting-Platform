@@ -171,7 +171,7 @@ export const VoterDashboardPage = () => {
       )}
 
       {/* Profile & Voter Identity Card */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Full Name & Role */}
         <div className="rounded-3xl border border-slate-800 bg-slate-950/70 p-5 space-y-1">
           <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">
@@ -199,6 +199,20 @@ export const VoterDashboardPage = () => {
           </span>
         </div>
 
+        {/* Recovery Email */}
+        <div className="rounded-3xl border border-slate-800 bg-slate-950/70 p-5 space-y-1">
+          <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">
+            Recovery Email
+          </span>
+          <span className="text-sm font-bold font-mono text-cyan-300 block truncate" title={user?.email}>
+            {user?.email || (user?.fullName ? `${user.fullName.toLowerCase().replace(/\s+/g, '')}+••••@gmail.com` : 'Not Set')}
+          </span>
+          <span className="text-xs text-slate-400 flex items-center gap-1">
+            <ShieldCheck className="h-3 w-3 text-emerald-400" />
+            <span>Verified Official Roll</span>
+          </span>
+        </div>
+
         {/* Constituency & Area */}
         <div className="rounded-3xl border border-slate-800 bg-slate-950/70 p-5 space-y-1">
           <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">
@@ -209,7 +223,7 @@ export const VoterDashboardPage = () => {
           </span>
           <span className="text-xs text-slate-400 flex items-center gap-1">
             <MapPin className="h-3 w-3 text-cyan-400" />
-            <span>Designated Area Jurisdiction</span>
+            <span>Designated Jurisdiction</span>
           </span>
         </div>
 

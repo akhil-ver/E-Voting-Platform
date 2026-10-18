@@ -66,8 +66,8 @@ export const RegisterPage = () => {
     setError(null);
     setSuccessMsg(null);
 
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters.');
+    if (password.length < 4) {
+      setError('Password must be at least 4 characters.');
       return;
     }
 
@@ -206,6 +206,17 @@ export const RegisterPage = () => {
                       <span className="text-[10px] text-slate-400 block uppercase">City / Area</span>
                       <span className="font-bold text-cyan-300">{verifiedRecord.areaName}</span>
                     </div>
+                    <div className="col-span-2 sm:col-span-4 border-t border-emerald-500/20 pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                      <div>
+                        <span className="text-[10px] text-slate-400 block uppercase">Assigned Recovery Email</span>
+                        <span className="font-mono text-xs font-bold text-cyan-300">
+                          {verifiedRecord.email || (verifiedRecord.fullName ? `${verifiedRecord.fullName.toLowerCase().replace(/\s+/g, '')}+${aadhaarLast4}@gmail.com` : '')}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-emerald-400 font-semibold bg-emerald-950/60 border border-emerald-500/30 px-2.5 py-0.5 rounded-full self-start sm:self-auto">
+                        Official Roll Email
+                      </span>
+                    </div>
                   </div>
                 </div>
               )}
@@ -213,11 +224,26 @@ export const RegisterPage = () => {
 
             {/* Step 2: Password Creation */}
             <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-5 space-y-4">
-              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-cyan-400">
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-cyan-500 text-slate-950 text-[11px]">
-                  2
-                </span>
-                <span>Create Your Account Password</span>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-cyan-400">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-cyan-500 text-slate-950 text-[11px]">
+                    2
+                  </span>
+                  <span>Create Your Account Password</span>
+                </div>
+                {aadhaarLast4 && aadhaarLast4.length === 4 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPassword(aadhaarLast4);
+                      setConfirmPassword(aadhaarLast4);
+                    }}
+                    className="text-[11px] font-mono font-bold text-amber-300 hover:text-amber-200 bg-amber-950/60 border border-amber-500/40 px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 shadow-sm"
+                  >
+                    <Key className="h-3 w-3 text-amber-400" />
+                    <span>Use Last 4 Digits of Aadhaar ({aadhaarLast4})</span>
+                  </button>
+                )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -230,7 +256,7 @@ export const RegisterPage = () => {
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="At least 6 characters"
+                    placeholder={aadhaarLast4 ? `At least 4 digits (e.g. ${aadhaarLast4})` : 'At least 4 characters'}
                     className="w-full rounded-xl border border-slate-800 bg-slate-900 px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:border-cyan-400 focus:outline-none"
                   />
                 </div>

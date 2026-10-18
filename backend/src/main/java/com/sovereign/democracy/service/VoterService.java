@@ -176,6 +176,7 @@ public class VoterService {
         }
 
         dto.setEmail(record.getComputedEmail());
+        dto.setAadhaarLast4(record.getAadhaarLast4());
 
         if (record.isHasRegisteredAccount()) {
             userAccountRepository.findByUsernameIgnoreCase(record.getVoterId()).ifPresent(acc -> {

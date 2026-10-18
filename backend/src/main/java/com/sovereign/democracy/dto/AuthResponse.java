@@ -12,9 +12,15 @@ public class AuthResponse {
     private String areaName;
     private Long areaId;
 
+    private String email;
+
     public AuthResponse() {}
 
     public AuthResponse(String token, String username, Role role, String fullName, String voterId, String areaName, Long areaId) {
+        this(token, username, role, fullName, voterId, areaName, areaId, null);
+    }
+
+    public AuthResponse(String token, String username, Role role, String fullName, String voterId, String areaName, Long areaId, String email) {
         this.token = token;
         this.username = username;
         this.role = role;
@@ -22,7 +28,11 @@ public class AuthResponse {
         this.voterId = voterId;
         this.areaName = areaName;
         this.areaId = areaId;
+        this.email = email;
     }
+
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
 
     public String getToken() { return token; }
     public void setToken(String token) { this.token = token; }

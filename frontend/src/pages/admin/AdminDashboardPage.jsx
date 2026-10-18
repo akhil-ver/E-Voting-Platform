@@ -913,11 +913,14 @@ export const AdminDashboardPage = () => {
       {/* Top Banner Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-5">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-full bg-cyan-500/10 px-2.5 py-0.5 text-xs font-bold text-cyan-400 border border-cyan-500/20">
               Admin Governance Console
             </span>
             <span className="text-xs text-slate-500 font-mono">ADMIN-001 (Root)</span>
+            <span className="text-xs text-cyan-300 font-mono border border-cyan-500/30 rounded-full px-2.5 py-0.5 bg-cyan-950/60 font-semibold">
+              akhilv.verma07@gmail.com
+            </span>
           </div>
           <h1 className="text-2xl font-black tracking-tight text-white mt-1">
             Electoral Authority Dashboard

@@ -161,8 +161,8 @@ export const Navbar = () => {
                       {user?.role}
                     </span>
                   </div>
-                  <span className="text-[10px] text-slate-400 font-mono">
-                    {user?.voterId || user?.username}
+                  <span className="text-[10px] text-cyan-300 font-mono">
+                    {user?.email || (isAdmin ? 'akhilv.verma07@gmail.com' : (user?.voterId || user?.username))}
                   </span>
                 </div>
 
