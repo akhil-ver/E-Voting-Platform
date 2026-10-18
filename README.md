@@ -444,6 +444,11 @@ FIREBASE_ENABLED=true ./mvnw spring-boot:run
 
 # Option B: Run with Gemini AI enabled (recommended for live civic insights)
 FIREBASE_ENABLED=true GEMINI_API_KEY="your-gemini-api-key" ./mvnw spring-boot:run
+
+# Option C: Run with Live Gmail SMTP Delivery (receives reset emails directly in Gmail inbox)
+# Note: Google requires a 16-character App Password (https://myaccount.google.com/apppasswords)
+FIREBASE_ENABLED=true MAIL_PASSWORD="your-16-char-google-app-password" ./mvnw spring-boot:run
+
 ```
 
 #### What happens automatically on backend startup:
@@ -520,9 +525,13 @@ npm run dev
 
 5. **Test Secure Password Reset (Forgot Password)**:
    - On the login screen, click **Forgot Password?**.
-   - Enter `ADMIN-001` or `akhilv.verma07@gmail.com` (or `VOT-MUM-1001`).
-   - A secure single-use SHA-256 token link is generated via URL fragment hash delivery (`#token=...`).
-   - Follow the link to safely reset and update the password.
+   - Enter `ADMIN-001` or `akhilv.verma07@gmail.com` (or citizen recovery email `aaravverma2017@gmail.com`).
+   - Click **Send Reset Link**:
+     - **With Gmail App Password (`MAIL_PASSWORD`)**: The server dispatches an HTML email directly to the recipient's Gmail inbox via SMTP (`smtp.gmail.com:587`).
+     - **Without `MAIL_PASSWORD` (Local / Offline mode)**: The server safely prints the single-use recovery link in the backend terminal console (`[PASSWORD RESET NOTIFICATION] Reset Link: http://localhost:3000/reset-password#token=...`) so local testing is never blocked.
+   - Click the link to open the **Reset Password** page, enter and confirm the new password, and submit.
+   - You can immediately log in with your updated password!
+
 
 ---
 

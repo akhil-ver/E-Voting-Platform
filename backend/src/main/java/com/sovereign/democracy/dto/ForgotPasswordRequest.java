@@ -1,10 +1,12 @@
 package com.sovereign.democracy.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import jakarta.validation.constraints.NotBlank;
 
 public class ForgotPasswordRequest {
 
     @NotBlank(message = "Username or recovery email is required")
+    @JsonAlias({"email", "username", "recoveryEmail"})
     private String identifier;
 
     public ForgotPasswordRequest() {
