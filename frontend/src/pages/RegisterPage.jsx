@@ -16,13 +16,12 @@ export const RegisterPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Pre-fill from query parameters if user clicked "Sign Up" on a table row
+  // Pre-fill Election ID from query parameters if user clicked "Sign Up" on a table row
   const queryParams = new URLSearchParams(location.search);
-  const initialVoterId = queryParams.get('voterId') || 'VOT-MUM-1002';
-  const initialAadhaar = queryParams.get('aadhaar') || '2034';
+  const initialVoterId = queryParams.get('voterId') || '';
 
   const [electionId, setElectionId] = useState(initialVoterId);
-  const [aadhaarLast4, setAadhaarLast4] = useState(initialAadhaar);
+  const [aadhaarLast4, setAadhaarLast4] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
@@ -54,12 +53,6 @@ export const RegisterPage = () => {
       setIsVerifying(false);
     }
   };
-
-  useEffect(() => {
-    if (initialVoterId && initialAadhaar) {
-      handleVerify(initialVoterId, initialAadhaar);
-    }
-  }, [initialVoterId, initialAadhaar]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -167,7 +160,7 @@ export const RegisterPage = () => {
                         setAadhaarLast4(e.target.value.replace(/\D/g, ''));
                         setVerifiedRecord(null);
                       }}
-                      placeholder="e.g. 2034"
+                      placeholder="0000"
                       className="w-24 rounded-xl border border-slate-800 bg-slate-900 px-3.5 py-2.5 text-xs font-mono font-bold text-center tracking-widest text-amber-300 placeholder-slate-500 focus:border-cyan-400 focus:outline-none"
                     />
                     <button
@@ -210,7 +203,7 @@ export const RegisterPage = () => {
                       <div>
                         <span className="text-[10px] text-slate-400 block uppercase">Assigned Recovery Email</span>
                         <span className="font-mono text-xs font-bold text-cyan-300">
-                          {verifiedRecord.email || (verifiedRecord.fullName ? `${verifiedRecord.fullName.toLowerCase().replace(/[^a-z0-9]/g, '')}${aadhaarLast4}@gmail.com` : '')}
+                          {verifiedRecord.email || (verifiedRecord.fullName ? `${verifiedRecord.fullName.toLowerCase().replace(/[^a-z0-9]/g, '')}0000@gmail.com` : '')}
                         </span>
                       </div>
                       <span className="text-[10px] text-emerald-400 font-semibold bg-emerald-950/60 border border-emerald-500/30 px-2.5 py-0.5 rounded-full self-start sm:self-auto">
@@ -231,19 +224,6 @@ export const RegisterPage = () => {
                   </span>
                   <span>Create Your Account Password</span>
                 </div>
-                {aadhaarLast4 && aadhaarLast4.length === 4 && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPassword(aadhaarLast4);
-                      setConfirmPassword(aadhaarLast4);
-                    }}
-                    className="text-[11px] font-mono font-bold text-amber-300 hover:text-amber-200 bg-amber-950/60 border border-amber-500/40 px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 shadow-sm"
-                  >
-                    <Key className="h-3 w-3 text-amber-400" />
-                    <span>Use Last 4 Digits of Aadhaar ({aadhaarLast4})</span>
-                  </button>
-                )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -256,7 +236,7 @@ export const RegisterPage = () => {
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder={aadhaarLast4 ? `At least 4 digits (e.g. ${aadhaarLast4})` : 'At least 4 characters'}
+                    placeholder="Enter password (minimum 4 characters)"
                     className="w-full rounded-xl border border-slate-800 bg-slate-900 px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:border-cyan-400 focus:outline-none"
                   />
                 </div>

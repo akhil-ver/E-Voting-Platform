@@ -168,6 +168,8 @@ public class VoterService {
                     record.isEligible(),
                     record.isHasRegisteredAccount()
             );
+            dto.setEmail(record.getComputedEmail());
+            dto.setAadhaarLast4(record.getAadhaarLast4());
         } else {
             dto = new VoterRecordDto(
                     record.getId(),
@@ -175,22 +177,26 @@ public class VoterService {
                     record.getFullName(),
                     null,
                     null,
-                    null,
+                    "0000",
                     record.getArea().getName(),
                     record.getArea().getId(),
                     record.isEligible(),
                     record.isHasRegisteredAccount()
             );
+            dto.setAadhaarLast4("0000");
+            String standardEmail = record.getComputedEmail();
+            if (standardEmail != null && record.getAadhaarLast4() != null) {
+                dto.setEmail(standardEmail.replace(record.getAadhaarLast4(), "0000"));
+            } else {
+                dto.setEmail(standardEmail);
+            }
         }
-
-        dto.setEmail(record.getComputedEmail());
-        dto.setAadhaarLast4(record.getAadhaarLast4());
 
         if (record.isHasRegisteredAccount()) {
             userAccountRepository.findByUsernameIgnoreCase(record.getVoterId()).ifPresent(acc -> {
                 dto.setUserAccountId(acc.getId());
                 dto.setAccountEnabled(acc.isEnabled());
-                if (acc.getRecoveryEmail() != null) {
+                if (includeAdminDetails && acc.getRecoveryEmail() != null) {
                     dto.setEmail(acc.getRecoveryEmail());
                 }
             });

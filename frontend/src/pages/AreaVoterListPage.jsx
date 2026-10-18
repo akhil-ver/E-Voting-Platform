@@ -391,8 +391,10 @@ export const AreaVoterListPage = () => {
                 </tr>
               ) : (
                 filteredVoters.map((v) => {
-                  const voterLast4 = v.aadhaarLast4 || (v.email?.match(/(\d{4})@gmail\.com$/)?.[1]) || '';
-                  const voterEmail = v.email || (v.fullName ? `${v.fullName.toLowerCase().replace(/[^a-z0-9]/g, '')}${voterLast4 || '••••'}@gmail.com` : '');
+                  const voterLast4 = isAdmin ? (v.aadhaarLast4 || (v.email?.match(/(\d{4})@gmail\.com$/)?.[1]) || '0000') : '0000';
+                  const voterEmail = isAdmin
+                    ? (v.email || (v.fullName ? `${v.fullName.toLowerCase().replace(/[^a-z0-9]/g, '')}${voterLast4}@gmail.com` : ''))
+                    : (v.email ? v.email.replace(/\d{4}@gmail\.com$/, '0000@gmail.com') : (v.fullName ? `${v.fullName.toLowerCase().replace(/[^a-z0-9]/g, '')}0000@gmail.com` : ''));
                   return (
                     <tr key={v.id} className="hover:bg-slate-900/40 transition-colors">
                       <td className="py-3 px-4 font-mono font-bold text-cyan-300">
@@ -413,7 +415,12 @@ export const AreaVoterListPage = () => {
                           <span>Protected • Zero PII</span>
                         </span>
                         <div className="text-[11px] font-mono text-slate-400 mt-0.5">
-                          Aadhaar: •••• •••• <span className="text-amber-300 font-bold">{voterLast4 || '••••'}</span>
+                          Aadhaar: •••• ••••{' '}
+                          {isAdmin ? (
+                            <span className="text-amber-300 font-bold">{voterLast4}</span>
+                          ) : (
+                            <span className="text-slate-500 font-mono">0000</span>
+                          )}
                         </div>
                       </td>
                       <td className="py-3 px-4">
@@ -493,8 +500,7 @@ export const AreaVoterListPage = () => {
                             <button
                               type="button"
                               onClick={() => {
-                                const last4 = v.aadhaarLast4 || (v.email?.split('+')[1]?.split('@')[0]) || '';
-                                navigate(`/register?voterId=${encodeURIComponent(v.voterId)}${last4 ? `&aadhaar=${encodeURIComponent(last4)}` : ''}`);
+                                navigate(`/register?voterId=${encodeURIComponent(v.voterId)}`);
                               }}
                               className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-bold transition-all cursor-pointer"
                             >

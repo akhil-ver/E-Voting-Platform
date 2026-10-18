@@ -104,14 +104,14 @@ public class AuthService {
                 record.getFullName(),
                 record.getFatherName(),
                 record.getMotherName(),
-                record.getAadhaarLast4(),
+                "0000",
                 record.getArea().getName(),
                 record.getArea().getId(),
                 record.isEligible(),
                 false
         );
         dto.setEmail(record.getComputedEmail());
-        dto.setAadhaarLast4(record.getAadhaarLast4());
+        dto.setAadhaarLast4("0000");
         return dto;
     }
 
