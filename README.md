@@ -87,29 +87,32 @@ Only **one** designated administrator account exists in the platform. Public reg
 ### 2. Registered Citizen Voter Account (`USER`)
 Ordinary citizens who register against existing authorized electoral records.
 - **Identifier**: Full Election ID (e.g., `VOT-MUM-1001`, `VOT-MUM-1002`, `VOT-DEL-2001`)
-- **Default Password**: `Voter@123` (or custom password set during registration)
-- **Recovery Email Convention**: `name+addharnumber@gmail.com`
-  - Formula: `LOWERCASE(FULL_NAME without spaces) + "+" + AADHAAR_NUMBER + "@gmail.com"`
-  - *Example*: Citizen **Aarav Verma** with Aadhaar `2017` &rarr; `aaravverma+2017@gmail.com`
-  - *Example*: Citizen **Ananya Verma** with Aadhaar `2034` &rarr; `ananyaverma+2034@gmail.com`
+- **Default Password**: Set on-demand during registration (default for active demo account `VOT-MUM-1001`: `pass123`)
+- **Recovery Email Convention**: `nameaadharnumber@gmail.com`
+  - Formula: `LOWERCASE(FULL_NAME without spaces) + AADHAAR_NUMBER + "@gmail.com"` (no spaces, no plus sign)
+  - *Example*: Citizen **Aarav Verma** with Aadhaar `2017` &rarr; `aaravverma2017@gmail.com`
+  - *Example*: Citizen **Ananya Deshmukh** with Aadhaar `2034` &rarr; `ananyadeshmukh2034@gmail.com`
+  - *Example*: Citizen **Rahul Jadhav** with Aadhaar `2051` &rarr; `rahuljadhav2051@gmail.com`
+- **Zero-PII Public Privacy**: Regular users never see Aadhaar numbers. The roster column displays `Protected • Zero PII` & `Official Roll Verified`. Only administrators have authorization to view Aadhaar records.
+- **Authenticated Dossier**: Upon authenticated login, the Voter Dashboard prominently features the verified electoral roll card containing the citizen's **Voter Name**, **Father's Name**, **Mother's Name**, **Assigned Recovery Email**, and **Constituency**.
 - **Permissions**: View eligible area elections, cast exactly one ballot, inspect published results, verify cryptographic receipts.
 
 ### Sample Test Voters Across Initial 10 Demonstration Areas
 
 | City / Area | Constituency | Election ID | Aadhaar Last 4 | Recovery Email | Citizen Name | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Mumbai** | Mumbai South | `VOT-MUM-1001` | `2017` | `aaravverma+2017@gmail.com` | Aarav Verma | Active Account (`pass123`) |
-| **Mumbai** | Mumbai South | `VOT-MUM-1002` | `2034` | `ananyaverma+2034@gmail.com` | Ananya Verma | Ready to Register (Verify: `2034`) |
-| **Mumbai** | Mumbai South | `VOT-MUM-1003` | `2051` | `rahulverma+2051@gmail.com` | Rahul Verma | Ready to Register (Verify: `2051`) |
-| **Delhi** | New Delhi Central | `VOT-DEL-2001` | `3017` | `aaravdeshmukh+3017@gmail.com` | Aarav Deshmukh | Ready to Register (Verify: `3017`) |
-| **Bengaluru**| Bengaluru South | `VOT-BLR-3001` | `4017` | `aaravjadhav+4017@gmail.com` | Aarav Jadhav | Ready to Register (Verify: `4017`) |
-| **Pune** | Pune Metro East | `VOT-PUN-4001` | `5017` | `aaravkulkarni+5017@gmail.com` | Aarav Kulkarni | Ready to Register (Verify: `5017`) |
-| **Hyderabad**| Old City & Cyber | `VOT-HYD-5001` | `6017` | `aaravmehta+6017@gmail.com` | Aarav Mehta | Ready to Register (Verify: `6017`) |
-| **Kolkata** | North Heritage | `VOT-KOL-6001` | `7017` | `aaravreddy+7017@gmail.com` | Aarav Reddy | Ready to Register (Verify: `7017`) |
-| **Chennai** | Central Urban | `VOT-CHN-7001` | `8017` | `aaravnair+8017@gmail.com` | Aarav Nair | Ready to Register (Verify: `8017`) |
-| **Ahmedabad**| West Industrial | `VOT-AMD-8001` | `9017` | `aaraviyer+9017@gmail.com` | Aarav Iyer | Ready to Register (Verify: `9017`) |
-| **Jaipur** | Heritage Ward | `VOT-JAI-9001` | `1017` | `aaravsingh+1017@gmail.com` | Aarav Singh | Ready to Register (Verify: `1017`) |
-| **Lucknow** | Central Awadh | `VOT-LKO-10001`| `2017` | `aaravgupta+2017@gmail.com` | Aarav Gupta | Ready to Register (Verify: `2017`) |
+| **Mumbai** | Mumbai South | `VOT-MUM-1001` | `2017` | `aaravverma2017@gmail.com` | Aarav Verma | Active Demo Account (`pass123`) |
+| **Mumbai** | Mumbai South | `VOT-MUM-1002` | `2034` | `ananyadeshmukh2034@gmail.com` | Ananya Deshmukh | Ready to Sign Up (Verify: `2034`) |
+| **Mumbai** | Mumbai South | `VOT-MUM-1003` | `2051` | `rahuljadhav2051@gmail.com` | Rahul Jadhav | Ready to Sign Up (Verify: `2051`) |
+| **Delhi** | New Delhi Central | `VOT-DEL-2001` | `3017` | `aaravdeshmukh3017@gmail.com` | Aarav Deshmukh | Ready to Sign Up (Verify: `3017`) |
+| **Bengaluru**| Bengaluru South | `VOT-BLR-3001` | `4017` | `aaravjadhav4017@gmail.com` | Aarav Jadhav | Ready to Sign Up (Verify: `4017`) |
+| **Pune** | Pune Metro East | `VOT-PUN-4001` | `5017` | `aaravkulkarni5017@gmail.com` | Aarav Kulkarni | Ready to Sign Up (Verify: `5017`) |
+| **Hyderabad**| Old City & Cyber | `VOT-HYD-5001` | `6017` | `aaravmehta6017@gmail.com` | Aarav Mehta | Ready to Sign Up (Verify: `6017`) |
+| **Kolkata** | North Heritage | `VOT-KOL-6001` | `7017` | `aaravreddy7017@gmail.com` | Aarav Reddy | Ready to Sign Up (Verify: `7017`) |
+| **Chennai** | Central Urban | `VOT-CHN-7001` | `8017` | `aaravnair8017@gmail.com` | Aarav Nair | Ready to Sign Up (Verify: `8017`) |
+| **Ahmedabad**| West Industrial | `VOT-AMD-8001` | `9017` | `aaraviyer9017@gmail.com` | Aarav Iyer | Ready to Sign Up (Verify: `9017`) |
+| **Jaipur** | Heritage Ward | `VOT-JAI-9001` | `1017` | `aaravsingh1017@gmail.com` | Aarav Singh | Ready to Sign Up (Verify: `1017`) |
+| **Lucknow** | Central Awadh | `VOT-LKO-10001`| `2017` | `aaravgupta2017@gmail.com` | Aarav Gupta | Ready to Sign Up (Verify: `2017`) |
 
 *(Total seeded roll: 10 Cities &times; 50 Records = 500 Records. Exactly 1 demonstration account in Mumbai (`VOT-MUM-1001`) is active; all other 499 citizens can register by verifying their 4-digit Aadhaar number and creating their password).*
 
@@ -729,15 +732,18 @@ npm run build
   - Seeded automatically on startup and synchronized across application runs.
 - **Citizen / Voter Accounts**:
   - Identifier: Election ID (e.g., `VOT-MUM-1001`, `VOT-DEL-2001`)
-  - Standardized Email Syntax: `name+addharnumber@gmail.com`
+  - Standardized Email Syntax: `nameaadharnumber@gmail.com` (no space, no plus sign)
   - Generation Algorithm:
-    $$\text{Recovery Email} = \text{LOWERCASE}(\text{REPLACE}(\text{fullName}, \text{" "}, \text{""})) \parallel \text{"+"} \parallel \text{aadhaarLast4} \parallel \text{"@gmail.com"}$$
+    $$\text{Recovery Email} = \text{LOWERCASE}(\text{REPLACE}(\text{fullName}, \text{" "}, \text{""})) \parallel \text{aadhaarLast4} \parallel \text{"@gmail.com"}$$
   - Examples:
-    - Citizen **Aarav Verma** (Aadhaar `2017`) &rarr; `aaravverma+2017@gmail.com`
-    - Citizen **Ananya Verma** (Aadhaar `2034`) &rarr; `ananyaverma+2034@gmail.com`
-    - Citizen **Aarav Deshmukh** (Aadhaar `3017`) &rarr; `aaravdeshmukh+3017@gmail.com`
-  - **Batch Pre-Encoded Synchronization**: `DataSeeder` provisions all 500 eligible citizen voter accounts on startup using a single cached BCrypt hash calculation, completing full batch enrollment in under 100ms.
+    - Citizen **Aarav Verma** (Aadhaar `2017`) &rarr; `aaravverma2017@gmail.com`
+    - Citizen **Ananya Deshmukh** (Aadhaar `2034`) &rarr; `ananyadeshmukh2034@gmail.com`
+    - Citizen **Rahul Jadhav** (Aadhaar `2051`) &rarr; `rahuljadhav2051@gmail.com`
+  - **Single Active Account & On-Demand Enrollment**: Exactly one demonstration citizen account (`VOT-MUM-1001`, password: `pass123`) is pre-activated on initialization. The remaining 499 enrolled citizen records are in `Ready to Sign Up` status and can be activated on-demand by the citizen by verifying their 4-digit Aadhaar number and creating their password.
   - **Citizen Registration Binding**: When unregistered voters activate their accounts via `POST /api/auth/register`, their calculated recovery email is automatically stored in `user_accounts.recovery_email`.
+  - **Full Unmasked Email Visibility**: Full email IDs are displayed for transparency across the citizen roster, registration confirmation card, and voter dashboard.
+  - **Zero-PII Public Roll & Aadhaar Confidentiality**: Aadhaar numbers are never transmitted or exposed to normal users. Regular users see `Protected • Zero PII` and `Official Roll Verified`, while only authenticated administrators can view Aadhaar details.
+  - **Authenticated Citizen Dossier**: Upon logging in, the personal voter dashboard renders the verified electoral profile card showing Voter Name, Father's Name, Mother's Name, City/Jurisdiction, and full Recovery Email.
 
 ### 2. Cryptographic Password Reset Flow
 - **Single-Use Token Generation**: Cryptographically secure 256-bit entropy random tokens generated via `SecureRandom`.
