@@ -124,10 +124,12 @@ public class DataSeeder implements CommandLineRunner {
         for (VoterRecord vr : allVoters) {
             boolean isMumbaiActiveVoter = vr.getVoterId().equalsIgnoreCase("VOT-MUM-1001");
             if (isMumbaiActiveVoter) {
+                vr.setEmail("akhil.verm.07@gmail.com");
                 if (!vr.isHasRegisteredAccount()) {
                     vr.setHasRegisteredAccount(true);
-                    votersToUpdate.add(vr);
                 }
+                votersToUpdate.add(vr);
+
                 Optional<UserAccount> uaOpt = userAccountRepository.findByUsernameIgnoreCase("VOT-MUM-1001");
                 if (uaOpt.isEmpty()) {
                     UserAccount activeUser = new UserAccount(
@@ -136,13 +138,14 @@ public class DataSeeder implements CommandLineRunner {
                             Role.USER,
                             vr
                     );
-                    activeUser.setRecoveryEmail(vr.getComputedEmail());
+                    activeUser.setRecoveryEmail("akhil.verm.07@gmail.com");
                     userAccountRepository.save(activeUser);
-                    log.info("Created single active Mumbai voter account: VOT-MUM-1001 (Recovery Email: {})", vr.getComputedEmail());
+                    log.info("Created single active Mumbai voter account: VOT-MUM-1001 (Recovery Email: akhil.verm.07@gmail.com)");
                 } else {
                     UserAccount activeUser = uaOpt.get();
-                    activeUser.setRecoveryEmail(vr.getComputedEmail());
+                    activeUser.setRecoveryEmail("akhil.verm.07@gmail.com");
                     userAccountRepository.save(activeUser);
+                    log.info("Verified active Mumbai voter account: VOT-MUM-1001 (Recovery Email: akhil.verm.07@gmail.com)");
                 }
             } else {
                 if (vr.isHasRegisteredAccount()) {

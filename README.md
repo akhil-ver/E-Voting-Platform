@@ -88,9 +88,9 @@ Only **one** designated administrator account exists in the platform. Public reg
 Ordinary citizens who register against existing authorized electoral records.
 - **Identifier**: Full Election ID (e.g., `VOT-MUM-1001`, `VOT-MUM-1002`, `VOT-DEL-2001`)
 - **Default Password**: Set on-demand during registration (default for active demo account `VOT-MUM-1001`: `pass123`)
-- **Recovery Email Convention**: `nameaadharnumber@gmail.com`
+- **Active Demo Account Recovery Email**: `akhil.verm.07@gmail.com` (assigned to `VOT-MUM-1001` for testing password recovery)
+- **Recovery Email Convention for Other Citizens**: `nameaadharnumber@gmail.com`
   - Formula: `LOWERCASE(FULL_NAME without spaces) + AADHAAR_NUMBER + "@gmail.com"` (no spaces, no plus sign)
-  - *Example*: Citizen **Aarav Verma** with Aadhaar `2017` &rarr; `aaravverma2017@gmail.com`
   - *Example*: Citizen **Ananya Deshmukh** with Aadhaar `2034` &rarr; `ananyadeshmukh2034@gmail.com`
   - *Example*: Citizen **Rahul Jadhav** with Aadhaar `2051` &rarr; `rahuljadhav2051@gmail.com`
 - **Zero-PII Public Privacy**: Regular users never see Aadhaar numbers. The roster column displays `Protected • Zero PII` & `Official Roll Verified`. Only administrators have authorization to view Aadhaar records.
@@ -101,7 +101,7 @@ Ordinary citizens who register against existing authorized electoral records.
 
 | City / Area | Constituency | Election ID | Aadhaar Last 4 | Recovery Email | Citizen Name | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Mumbai** | Mumbai South | `VOT-MUM-1001` | `2017` | `aaravverma2017@gmail.com` | Aarav Verma | Active Demo Account (`pass123`) |
+| **Mumbai** | Mumbai South | `VOT-MUM-1001` | `2017` | `akhil.verm.07@gmail.com` | Aarav Verma | Active Demo Account (`pass123`) |
 | **Mumbai** | Mumbai South | `VOT-MUM-1002` | `2034` | `ananyadeshmukh2034@gmail.com` | Ananya Deshmukh | Ready to Sign Up (Verify: `2034`) |
 | **Mumbai** | Mumbai South | `VOT-MUM-1003` | `2051` | `rahuljadhav2051@gmail.com` | Rahul Jadhav | Ready to Sign Up (Verify: `2051`) |
 | **Delhi** | New Delhi Central | `VOT-DEL-2001` | `3017` | `aaravdeshmukh3017@gmail.com` | Aarav Deshmukh | Ready to Sign Up (Verify: `3017`) |

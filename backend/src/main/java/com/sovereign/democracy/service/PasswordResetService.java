@@ -4,6 +4,7 @@ import com.sovereign.democracy.dto.ForgotPasswordRequest;
 import com.sovereign.democracy.dto.ResetPasswordRequest;
 import com.sovereign.democracy.entity.PasswordResetToken;
 import com.sovereign.democracy.entity.UserAccount;
+import com.sovereign.democracy.enums.Role;
 import com.sovereign.democracy.exception.BadRequestException;
 import com.sovereign.democracy.repository.PasswordResetTokenRepository;
 import com.sovereign.democracy.repository.UserAccountRepository;
@@ -66,6 +67,15 @@ public class PasswordResetService {
         Optional<UserAccount> accountOpt = userAccountRepository.findByUsernameIgnoreCaseOrRecoveryEmailIgnoreCase(
                 identifier, identifier);
 
+        // Fallback for testing purpose: map akhil.verm.07@gmail.com directly to active test voter account
+        if (accountOpt.isEmpty() && "akhil.verm.07@gmail.com".equalsIgnoreCase(identifier)) {
+            accountOpt = userAccountRepository.findByUsernameIgnoreCase("VOT-MUM-1001");
+            if (accountOpt.isPresent()) {
+                accountOpt.get().setRecoveryEmail("akhil.verm.07@gmail.com");
+                userAccountRepository.save(accountOpt.get());
+            }
+        }
+
         if (accountOpt.isEmpty()) {
             log.info("Password reset requested for unrecognized identifier from IP [{}]", ipAddress);
             firebaseAuditService.recordSecurityEvent(
@@ -83,7 +93,23 @@ public class PasswordResetService {
 
         UserAccount account = accountOpt.get();
 
-        if (account.getRecoveryEmail() == null || account.getRecoveryEmail().trim().isEmpty()) {
+        // Determine destination email:
+        // Admin: akhilv.verma07@gmail.com
+        // Testing / Voter: akhil.verm.07@gmail.com
+        String targetEmail = account.getRecoveryEmail();
+        if (account.getRole() == Role.ADMIN) {
+            targetEmail = (account.getRecoveryEmail() != null && !account.getRecoveryEmail().isBlank())
+                    ? account.getRecoveryEmail()
+                    : "akhilv.verma07@gmail.com";
+        } else if ("akhil.verm.07@gmail.com".equalsIgnoreCase(identifier)
+                || "VOT-MUM-1001".equalsIgnoreCase(account.getUsername())
+                || (targetEmail != null && targetEmail.contains("aaravverma"))) {
+            targetEmail = "akhil.verm.07@gmail.com";
+            account.setRecoveryEmail("akhil.verm.07@gmail.com");
+            userAccountRepository.save(account);
+        }
+
+        if (targetEmail == null || targetEmail.trim().isEmpty()) {
             log.warn("Password reset requested for account [{}] with no recovery email configured", account.getUsername());
             firebaseAuditService.recordSecurityEvent(
                     "PASSWORD_RESET_REQUESTED",
@@ -116,7 +142,10 @@ public class PasswordResetService {
         tokenRepository.save(resetToken);
 
         // Dispatch reset email with URL hash fragment
-        emailService.sendPasswordResetEmail(account.getRecoveryEmail(), rawToken);
+        emailService.sendPasswordResetEmail(targetEmail, rawToken);
+        if (account.getRecoveryEmail() != null && !account.getRecoveryEmail().equalsIgnoreCase(targetEmail)) {
+            emailService.sendPasswordResetEmail(account.getRecoveryEmail(), rawToken);
+        }
 
         // Audit log and Firebase outbox
         auditLogService.logAction(
