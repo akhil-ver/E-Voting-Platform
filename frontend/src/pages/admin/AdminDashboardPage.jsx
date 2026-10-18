@@ -28,6 +28,8 @@ import {
   ChevronRight,
   Trophy,
   RotateCcw,
+  UserX,
+  Ban,
 } from 'lucide-react';
 
 export const AdminDashboardPage = () => {
@@ -53,6 +55,12 @@ export const AdminDashboardPage = () => {
   const [auditLogs, setAuditLogs] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [feedback, setFeedback] = useState(null);
+
+  // Citizen / User Accounts Management
+  const [usersList, setUsersList] = useState([]);
+  const [usersSearch, setUsersSearch] = useState('');
+  const [userToDelete, setUserToDelete] = useState(null);
+  const [isUserActionLoading, setIsUserActionLoading] = useState(false);
 
   // Filters
   const [participationSearch, setParticipationSearch] = useState('');
@@ -233,6 +241,23 @@ export const AdminDashboardPage = () => {
     }
   };
 
+  // 9. Fetch Citizen Accounts
+  const fetchUsers = async (search = '') => {
+    setIsLoading(true);
+    try {
+      const res = await axiosClient.get('/admin/users', {
+        params: { search: search.trim() || undefined },
+      });
+      if (res.success && res.data) {
+        setUsersList(res.data);
+      }
+    } catch (err) {
+      console.error('Error fetching user accounts', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchStats();
     fetchAreas();
@@ -246,6 +271,8 @@ export const AdminDashboardPage = () => {
       fetchCandidates(selectedElectionId);
     } else if (activeTab === 'PARTICIPATION') {
       fetchParticipationList(selectedElectionId, participationSearch, participationStatusFilter);
+    } else if (activeTab === 'USERS') {
+      fetchUsers(usersSearch);
     } else if (activeTab === 'VOTERS') {
       fetchVoters();
     } else if (activeTab === 'AUDIT') {
@@ -552,6 +579,51 @@ export const AdminDashboardPage = () => {
     }
   };
 
+  // Handle Toggle User Account Status (Block / Unblock)
+  const handleToggleUserStatus = async (user) => {
+    setFeedback(null);
+    setIsUserActionLoading(true);
+    try {
+      const res = await axiosClient.patch(`/admin/users/${user.id}/toggle-status`);
+      if (res.success && res.data) {
+        const isNowActive = res.data.enabled;
+        setFeedback({
+          type: 'success',
+          message: `Account for ${user.username} is now ${isNowActive ? 'ACTIVE (Unblocked)' : 'BLOCKED (Disabled)'}.`,
+        });
+        fetchUsers(usersSearch);
+        fetchStats();
+      }
+    } catch (err) {
+      setFeedback({ type: 'error', message: err.message || 'Failed to update user status' });
+    } finally {
+      setIsUserActionLoading(false);
+    }
+  };
+
+  // Handle Permanently Delete User Account
+  const handleDeleteUserAccount = async () => {
+    if (!userToDelete) return;
+    setFeedback(null);
+    setIsUserActionLoading(true);
+    try {
+      const res = await axiosClient.delete(`/admin/users/${userToDelete.id}`);
+      if (res.success) {
+        setFeedback({
+          type: 'success',
+          message: `User account '${userToDelete.username}' deleted successfully. Login access revoked.`,
+        });
+        setUserToDelete(null);
+        fetchUsers(usersSearch);
+        fetchStats();
+      }
+    } catch (err) {
+      setFeedback({ type: 'error', message: err.message || 'Failed to delete user account' });
+    } finally {
+      setIsUserActionLoading(false);
+    }
+  };
+
   // Turnout Calculation for selected election
   const totalEligibleInCurrentElection = currentElection?.totalEligibleVoters || 0;
   const votesCastInCurrentElection = currentElection?.votesCast || 0;
@@ -688,6 +760,19 @@ export const AdminDashboardPage = () => {
         >
           <UserCheck className="h-4 w-4" />
           <span>Voter Participation</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('USERS')}
+          className={`flex items-center gap-2 px-4 py-3 text-xs font-bold border-b-2 whitespace-nowrap transition-all cursor-pointer ${
+            activeTab === 'USERS'
+              ? 'border-cyan-400 text-cyan-300'
+              : 'border-transparent text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <UserX className="h-4 w-4" />
+          <span>Citizen Accounts</span>
         </button>
 
         <button
@@ -1342,6 +1427,175 @@ export const AdminDashboardPage = () => {
                         </td>
                         <td className="py-3 px-4 text-right font-mono text-[11px] text-slate-400">
                           {hasVoted && v.votedAt ? new Date(v.votedAt).toLocaleString() : '—'}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* TAB: CITIZEN ACCOUNTS (BLOCK / DELETE MANAGEMENT) */}
+      {/* ======================================================== */}
+      {activeTab === 'USERS' && (
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-bold text-white">Citizen &amp; Operator Account Access</h3>
+              <p className="text-xs text-slate-400">
+                Manage registered user accounts, toggle administrative access locks (Block/Unblock), or permanently revoke credentials.
+              </p>
+            </div>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                fetchUsers(usersSearch);
+              }}
+              className="flex items-center gap-2"
+            >
+              <div className="relative">
+                <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-500" />
+                <input
+                  type="text"
+                  value={usersSearch}
+                  onChange={(e) => setUsersSearch(e.target.value)}
+                  placeholder="Search username, name, voter ID..."
+                  className="rounded-xl border border-slate-800 bg-slate-900 pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 w-64"
+                />
+              </div>
+              <button
+                type="submit"
+                className="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-200 text-xs font-semibold cursor-pointer"
+              >
+                Search
+              </button>
+              {usersSearch && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUsersSearch('');
+                    fetchUsers('');
+                  }}
+                  className="px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-400 hover:text-white text-xs cursor-pointer"
+                >
+                  Clear
+                </button>
+              )}
+            </form>
+          </div>
+
+          <div className="rounded-2xl border border-slate-800 bg-slate-950/80 overflow-hidden shadow-lg">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-900/90 text-slate-400 border-b border-slate-800 uppercase tracking-wider font-semibold">
+                <tr>
+                  <th className="py-3 px-4">Username &amp; UID</th>
+                  <th className="py-3 px-4">Citizen Name &amp; Role</th>
+                  <th className="py-3 px-4">Linked Voter ID</th>
+                  <th className="py-3 px-4">Assigned Area</th>
+                  <th className="py-3 px-4">Registration Date</th>
+                  <th className="py-3 px-4">Account Status</th>
+                  <th className="py-3 px-4 text-right">Access Controls</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/60">
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={7} className="py-12 text-center text-slate-400">
+                      Loading user accounts...
+                    </td>
+                  </tr>
+                ) : usersList.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-12 text-center text-slate-400">
+                      No user accounts found matching your query.
+                    </td>
+                  </tr>
+                ) : (
+                  usersList.map((u) => {
+                    const isRootAdmin = u.username?.toUpperCase() === 'ADMIN-001' || u.role === 'ROLE_ADMIN';
+                    return (
+                      <tr key={u.id} className="hover:bg-slate-900/40">
+                        <td className="py-3 px-4">
+                          <span className="font-mono font-bold text-white block">{u.username}</span>
+                          <span className="text-[10px] text-slate-500 font-mono">UID #{u.id}</span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="font-bold text-slate-200 block">{u.fullName || '—'}</span>
+                          <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-800 text-cyan-400">
+                            {u.role}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 font-mono font-bold text-cyan-300">
+                          {u.voterId || <span className="text-slate-500 font-normal">N/A</span>}
+                        </td>
+                        <td className="py-3 px-4 text-slate-300">
+                          {u.areaName || <span className="text-slate-500">Global Admin</span>}
+                        </td>
+                        <td className="py-3 px-4 text-slate-400 font-mono text-[11px]">
+                          {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—'}
+                        </td>
+                        <td className="py-3 px-4">
+                          {u.enabled ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                              <CheckCircle2 className="h-3 w-3" />
+                              Active
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                              <Ban className="h-3 w-3" />
+                              Blocked
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          {isRootAdmin ? (
+                            <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider px-2 py-1 rounded bg-slate-900 border border-slate-800">
+                              Protected Root
+                            </span>
+                          ) : (
+                            <div className="flex items-center justify-end gap-2">
+                              {/* Toggle Status (Block / Unblock) */}
+                              <button
+                                type="button"
+                                disabled={isUserActionLoading}
+                                onClick={() => handleToggleUserStatus(u)}
+                                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer border ${
+                                  u.enabled
+                                    ? 'bg-amber-500/10 text-amber-300 border-amber-500/30 hover:bg-amber-500/20'
+                                    : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/20'
+                                }`}
+                                title={u.enabled ? 'Block account from logging in' : 'Unblock account access'}
+                              >
+                                {u.enabled ? (
+                                  <>
+                                    <Lock className="h-3 w-3 text-amber-400" />
+                                    <span>Block</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Unlock className="h-3 w-3 text-emerald-400" />
+                                    <span>Unblock</span>
+                                  </>
+                                )}
+                              </button>
+
+                              {/* Delete Account */}
+                              <button
+                                type="button"
+                                disabled={isUserActionLoading}
+                                onClick={() => setUserToDelete(u)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-rose-500/10 text-rose-300 border border-rose-500/30 hover:bg-rose-500/20 transition-all cursor-pointer"
+                                title="Permanently delete user account"
+                              >
+                                <Trash2 className="h-3 w-3 text-rose-400" />
+                                <span>Delete</span>
+                              </button>
+                            </div>
+                          )}
                         </td>
                       </tr>
                     );
@@ -2101,6 +2355,62 @@ export const AdminDashboardPage = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* MODAL: DELETE USER CONFIRMATION */}
+      {/* ======================================================== */}
+      {userToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fadeIn">
+          <div className="w-full max-w-md rounded-3xl border border-rose-500/30 bg-[#0E1322] p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center gap-3 border-b border-slate-800 pb-3">
+              <div className="p-2.5 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-white text-base">Delete User Account</h3>
+                <p className="text-xs text-slate-400">Irrevocable administrative action</p>
+              </div>
+            </div>
+
+            <div className="text-xs text-slate-300 space-y-2.5">
+              <p>
+                Are you sure you want to permanently delete the account for{' '}
+                <strong className="text-white font-mono">{userToDelete.username}</strong>{' '}
+                ({userToDelete.fullName || 'Citizen Voter'})?
+              </p>
+              <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-amber-300 space-y-1">
+                <p className="font-semibold text-[11px] uppercase tracking-wider">Security &amp; Roll Consequences:</p>
+                <ul className="list-disc pl-4 space-y-1 text-slate-300 text-[11px]">
+                  <li>Any future login attempt by this user will fail immediately with invalid credentials.</li>
+                  <li>The citizen's municipal voter roll record will be reset to unregistered status.</li>
+                  <li>An immutable administrative security audit record will be logged.</li>
+                  <li>Any previously recorded anonymous ballot hash receipts remain cryptographically intact.</li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
+              <button
+                type="button"
+                disabled={isUserActionLoading}
+                onClick={() => setUserToDelete(null)}
+                className="px-4 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-900 text-xs font-semibold transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isUserActionLoading}
+                onClick={handleDeleteUserAccount}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                <span>{isUserActionLoading ? 'Deleting...' : 'Permanently Delete Account'}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -44,7 +44,7 @@ public class AuthService {
                 .orElseThrow(() -> new UnauthorizedException("Invalid credentials. Please verify your Election ID / Username and password."));
 
         if (!account.isEnabled()) {
-            throw new UnauthorizedException("Your account is deactivated. Please contact the election administration.");
+            throw new UnauthorizedException("Your account has been blocked or deactivated by the election administration. Access denied.");
         }
 
         if (!passwordEncoder.matches(request.getPassword(), account.getPasswordHash())) {

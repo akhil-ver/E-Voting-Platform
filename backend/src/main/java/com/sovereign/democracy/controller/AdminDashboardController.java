@@ -13,6 +13,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import com.sovereign.democracy.dto.UserAccountDto;
+import com.sovereign.democracy.service.UserAccountService;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.security.core.Authentication;
+
 import java.util.List;
 
 @RestController
@@ -25,17 +30,20 @@ public class AdminDashboardController {
     private final UserAccountRepository userAccountRepository;
     private final ElectionRepository electionRepository;
     private final AuditLogService auditLogService;
+    private final UserAccountService userAccountService;
 
     public AdminDashboardController(AreaRepository areaRepository,
                                     VoterRecordRepository voterRecordRepository,
                                     UserAccountRepository userAccountRepository,
                                     ElectionRepository electionRepository,
-                                    AuditLogService auditLogService) {
+                                    AuditLogService auditLogService,
+                                    UserAccountService userAccountService) {
         this.areaRepository = areaRepository;
         this.voterRecordRepository = voterRecordRepository;
         this.userAccountRepository = userAccountRepository;
         this.electionRepository = electionRepository;
         this.auditLogService = auditLogService;
+        this.userAccountService = userAccountService;
     }
 
     @GetMapping("/dashboard-stats")
@@ -54,6 +62,55 @@ public class AdminDashboardController {
         );
 
         return ResponseEntity.ok(ApiResponse.ok("Dashboard stats retrieved successfully", stats));
+    }
+
+    @GetMapping("/users")
+    public ResponseEntity<ApiResponse<List<UserAccountDto>>> getUsers(
+            @RequestParam(required = false) String search) {
+        List<UserAccountDto> users = userAccountService.getAllUsers(search);
+        return ResponseEntity.ok(ApiResponse.ok("User accounts retrieved successfully", users));
+    }
+
+    @PatchMapping("/users/{id}/toggle-status")
+    public ResponseEntity<ApiResponse<UserAccountDto>> toggleUserStatus(
+            @PathVariable Long id,
+            Authentication authentication,
+            HttpServletRequest request) {
+        String adminUsername = authentication != null ? authentication.getName() : "ADMIN-001";
+        UserAccountDto updated = userAccountService.toggleUserStatus(id, adminUsername, request.getRemoteAddr());
+        String msg = updated.isEnabled() ? "User account unblocked successfully" : "User account blocked successfully";
+        return ResponseEntity.ok(ApiResponse.ok(msg, updated));
+    }
+
+    @DeleteMapping("/users/{id}")
+    public ResponseEntity<ApiResponse<Void>> deleteUser(
+            @PathVariable Long id,
+            Authentication authentication,
+            HttpServletRequest request) {
+        String adminUsername = authentication != null ? authentication.getName() : "ADMIN-001";
+        userAccountService.deleteUserAccount(id, adminUsername, request.getRemoteAddr());
+        return ResponseEntity.ok(ApiResponse.ok("User account deleted permanently. Login access revoked.", null));
+    }
+
+    @PatchMapping("/users/by-voter/{voterId}/toggle-status")
+    public ResponseEntity<ApiResponse<UserAccountDto>> toggleUserStatusByVoter(
+            @PathVariable String voterId,
+            Authentication authentication,
+            HttpServletRequest request) {
+        String adminUsername = authentication != null ? authentication.getName() : "ADMIN-001";
+        UserAccountDto updated = userAccountService.toggleUserStatusByVoterId(voterId, adminUsername, request.getRemoteAddr());
+        String msg = updated.isEnabled() ? "User account unblocked successfully" : "User account blocked successfully";
+        return ResponseEntity.ok(ApiResponse.ok(msg, updated));
+    }
+
+    @DeleteMapping("/users/by-voter/{voterId}")
+    public ResponseEntity<ApiResponse<Void>> deleteUserByVoter(
+            @PathVariable String voterId,
+            Authentication authentication,
+            HttpServletRequest request) {
+        String adminUsername = authentication != null ? authentication.getName() : "ADMIN-001";
+        userAccountService.deleteUserAccountByVoterId(voterId, adminUsername, request.getRemoteAddr());
+        return ResponseEntity.ok(ApiResponse.ok("User account deleted permanently. Login access revoked.", null));
     }
 
     @GetMapping("/audit-logs")

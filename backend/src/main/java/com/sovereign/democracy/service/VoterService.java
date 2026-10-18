@@ -6,6 +6,7 @@ import com.sovereign.democracy.entity.VoterRecord;
 import com.sovereign.democracy.exception.BadRequestException;
 import com.sovereign.democracy.exception.ResourceNotFoundException;
 import com.sovereign.democracy.repository.AreaRepository;
+import com.sovereign.democracy.repository.UserAccountRepository;
 import com.sovereign.democracy.repository.VoterRecordRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -24,13 +25,16 @@ public class VoterService {
 
     private final VoterRecordRepository voterRecordRepository;
     private final AreaRepository areaRepository;
+    private final UserAccountRepository userAccountRepository;
     private final AuditLogService auditLogService;
 
     public VoterService(VoterRecordRepository voterRecordRepository,
                         AreaRepository areaRepository,
+                        UserAccountRepository userAccountRepository,
                         AuditLogService auditLogService) {
         this.voterRecordRepository = voterRecordRepository;
         this.areaRepository = areaRepository;
+        this.userAccountRepository = userAccountRepository;
         this.auditLogService = auditLogService;
     }
 
@@ -142,8 +146,9 @@ public class VoterService {
     }
 
     public VoterRecordDto mapToDto(VoterRecord record, boolean includeAdminDetails) {
+        VoterRecordDto dto;
         if (includeAdminDetails) {
-            return new VoterRecordDto(
+            dto = new VoterRecordDto(
                     record.getId(),
                     record.getVoterId(),
                     record.getFullName(),
@@ -156,7 +161,7 @@ public class VoterService {
                     record.isHasRegisteredAccount()
             );
         } else {
-            return new VoterRecordDto(
+            dto = new VoterRecordDto(
                     record.getId(),
                     record.getVoterId(),
                     record.getFullName(),
@@ -169,5 +174,14 @@ public class VoterService {
                     record.isHasRegisteredAccount()
             );
         }
+
+        if (record.isHasRegisteredAccount()) {
+            userAccountRepository.findByUsernameIgnoreCase(record.getVoterId()).ifPresent(acc -> {
+                dto.setUserAccountId(acc.getId());
+                dto.setAccountEnabled(acc.isEnabled());
+            });
+        }
+
+        return dto;
     }
 }

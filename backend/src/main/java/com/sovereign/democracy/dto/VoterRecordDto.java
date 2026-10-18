@@ -11,6 +11,8 @@ public class VoterRecordDto {
     private Long areaId;
     private boolean eligible;
     private boolean hasRegisteredAccount;
+    private Long userAccountId;
+    private Boolean accountEnabled;
 
     public VoterRecordDto() {}
 
@@ -57,4 +59,10 @@ public class VoterRecordDto {
 
     public boolean isHasRegisteredAccount() { return hasRegisteredAccount; }
     public void setHasRegisteredAccount(boolean hasRegisteredAccount) { this.hasRegisteredAccount = hasRegisteredAccount; }
+
+    public Long getUserAccountId() { return userAccountId; }
+    public void setUserAccountId(Long userAccountId) { this.userAccountId = userAccountId; }
+
+    public Boolean getAccountEnabled() { return accountEnabled; }
+    public void setAccountEnabled(Boolean accountEnabled) { this.accountEnabled = accountEnabled; }
 }

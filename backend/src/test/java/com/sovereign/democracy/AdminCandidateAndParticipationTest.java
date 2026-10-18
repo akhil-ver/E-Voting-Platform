@@ -55,6 +55,9 @@ public class AdminCandidateAndParticipationTest {
     @Autowired
     private BallotRecordRepository ballotRecordRepository;
 
+    @Autowired
+    private UserAccountRepository userAccountRepository;
+
     private String adminToken;
 
     @BeforeEach
@@ -361,5 +364,122 @@ public class AdminCandidateAndParticipationTest {
         Election reset = electionRepository.findById(election.getId()).orElseThrow();
         assertThat(reset.getStatus()).isEqualTo(ElectionStatus.OPEN);
         assertThat(reset.getClosureTimestamp()).isNull();
+    }
+
+    @Test
+    @DisplayName("Admin Feature: Block/Unblock user account and enforce login rejection")
+    void testAdminBlockAndUnblockUserAccount() throws Exception {
+        // Find an un-registered voter or reset one
+        VoterRecord voter = voterRecordRepository.findByVoterIdIgnoreCase("VOT-DEL-2010").orElseThrow();
+        if (voter.isHasRegisteredAccount()) {
+            userAccountRepository.findByUsernameIgnoreCase("VOT-DEL-2010").ifPresent(userAccountRepository::delete);
+            voter.setHasRegisteredAccount(false);
+            voterRecordRepository.save(voter);
+        }
+
+        // 1. Citizen registers
+        RegisterRequest registerReq = new RegisterRequest("VOT-DEL-2010", voter.getAadhaarLast4(), "Password@123");
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(registerReq)))
+                .andExpect(status().isOk());
+
+        // 2. Citizen can login successfully
+        LoginRequest loginReq = new LoginRequest("VOT-DEL-2010", "Password@123");
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(loginReq)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+
+        UserAccount user = userAccountRepository.findByUsernameIgnoreCase("VOT-DEL-2010").orElseThrow();
+
+        // 3. Admin blocks user account
+        mockMvc.perform(patch("/api/admin/users/" + user.getId() + "/toggle-status")
+                        .header("Authorization", adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.enabled").value(false));
+
+        // 4. Blocked citizen attempts login -> 401 Unauthorized with blocked account error
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(loginReq)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("blocked")));
+
+        // 5. Admin unblocks user account
+        mockMvc.perform(patch("/api/admin/users/" + user.getId() + "/toggle-status")
+                        .header("Authorization", adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.enabled").value(true));
+
+        // 6. Unblocked citizen can login again
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(loginReq)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+    }
+
+    @Test
+    @DisplayName("Admin Feature: Permanently delete user account and enforce login failure")
+    void testAdminDeleteUserAccount() throws Exception {
+        VoterRecord voter = voterRecordRepository.findByVoterIdIgnoreCase("VOT-BLR-3015").orElseThrow();
+        if (voter.isHasRegisteredAccount()) {
+            userAccountRepository.findByUsernameIgnoreCase("VOT-BLR-3015").ifPresent(userAccountRepository::delete);
+            voter.setHasRegisteredAccount(false);
+            voterRecordRepository.save(voter);
+        }
+
+        // 1. Citizen registers
+        RegisterRequest registerReq = new RegisterRequest("VOT-BLR-3015", voter.getAadhaarLast4(), "Password@123");
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(registerReq)))
+                .andExpect(status().isOk());
+
+        UserAccount user = userAccountRepository.findByUsernameIgnoreCase("VOT-BLR-3015").orElseThrow();
+        assertThat(user.isEnabled()).isTrue();
+
+        // 2. Admin deletes user account
+        mockMvc.perform(delete("/api/admin/users/" + user.getId())
+                        .header("Authorization", adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+
+        // 3. Deleted citizen attempts login -> 401 Unauthorized (user account does not exist)
+        LoginRequest loginReq = new LoginRequest("VOT-BLR-3015", "Password@123");
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(loginReq)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("Invalid credentials")));
+
+        // 4. Verify voter record registration status reset
+        VoterRecord updatedVoter = voterRecordRepository.findByVoterIdIgnoreCase("VOT-BLR-3015").orElseThrow();
+        assertThat(updatedVoter.isHasRegisteredAccount()).isFalse();
+
+        // 5. Verify user account entity is removed from DB
+        assertThat(userAccountRepository.findByUsernameIgnoreCase("VOT-BLR-3015")).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Admin Feature: Root Administrator ADMIN-001 cannot be blocked or deleted")
+    void testRootAdminCannotBeBlockedOrDeleted() throws Exception {
+        UserAccount rootAdmin = userAccountRepository.findByUsernameIgnoreCase("ADMIN-001").orElseThrow();
+
+        // Attempt to block root admin -> 400 Bad Request
+        mockMvc.perform(patch("/api/admin/users/" + rootAdmin.getId() + "/toggle-status")
+                        .header("Authorization", adminToken))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("primary administrator account cannot be blocked")));
+
+        // Attempt to delete root admin -> 400 Bad Request
+        mockMvc.perform(delete("/api/admin/users/" + rootAdmin.getId())
+                        .header("Authorization", adminToken))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("primary administrator account cannot be deleted")));
     }
 }
