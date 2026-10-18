@@ -1,0 +1,29 @@
+# Node.js
+node_modules/
+build/
+dist/
+coverage/
+
+# Java & Maven
+target/
+*.class
+*.jar
+*.war
+*.ear
+
+# IDE & Editor files
+.idea/
+.vscode/
+*.iml
+.settings/
+.classpath
+.project
+
+# System & Logs
+.DS_Store
+*.log
+
+# Environment variables & secrets
+.env*
+!.env.example
+application-local.properties

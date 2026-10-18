@@ -1,0 +1,6 @@
+{
+  "name": "Smart E-Voting System",
+  "description": "Production-architected, privacy-preserving, auditable e-voting simulation with zero-knowledge verification, blockchain ledger, and AI security intelligence.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

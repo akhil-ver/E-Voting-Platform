@@ -1,0 +1,98 @@
+/**
+ * Threat Model & Security Assurance Matrix
+ * Formally maps attack vectors, vulnerabilities, threat tiers, and architectural countermeasures
+ */
+import { ThreatVector } from '../types';
+
+export const THREAT_VECTORS: ThreatVector[] = [
+  {
+    id: 'TV-01',
+    name: 'Sybil & Double-Voting Attack',
+    category: 'INTEGRITY',
+    description: 'An attacker attempts to cast multiple votes using the same credential or forged tokens.',
+    attackVector: 'Submitting duplicate ballot envelopes with identical or mutated nullifiers.',
+    defenseMechanism: 'Deterministic cryptographic nullifiers stored in immutable ledger mempool + consumed eligibility state.',
+    testedStatus: 'BLOCKED',
+  },
+  {
+    id: 'TV-02',
+    name: 'Ledger Block / Transaction Tampering',
+    category: 'INTEGRITY',
+    description: 'An insider or compromised node mutates a confirmed vote transaction inside a mined block.',
+    attackVector: 'Modifying transaction payload, Merkle root, or previousHash in database record.',
+    defenseMechanism: 'SHA-256 Merkle root verification + strict previousHash chaining + 2/3 validator consensus check.',
+    testedStatus: 'ALERTED',
+  },
+  {
+    id: 'TV-03',
+    name: 'Transaction Replay Attack',
+    category: 'INTEGRITY',
+    description: 'An eavesdropper intercepts a signed vote transaction and re-submits it in a subsequent time window.',
+    attackVector: 'Broadcasting captured valid transaction signature with identical nonce.',
+    defenseMechanism: 'Unique cryptographically generated nonces + single-use transaction IDs bound to election epoch.',
+    testedStatus: 'BLOCKED',
+  },
+  {
+    id: 'TV-04',
+    name: 'Forged / Invalid Signature Injection',
+    category: 'AUTHENTICATION',
+    description: 'Attacker creates synthetic ballots with randomized or invalid ECDSA signatures.',
+    attackVector: 'Direct API POST with mismatched public key JWK and signature bytes.',
+    defenseMechanism: 'Strict WebCrypto ECDSA P-256 signature verification over canonical serialized envelope.',
+    testedStatus: 'BLOCKED',
+  },
+  {
+    id: 'TV-05',
+    name: 'Expired / Pre-mature Token Abuse',
+    category: 'AUTHENTICATION',
+    description: 'Attempting to cast a ballot outside the authorized voting window or with an expired voting token.',
+    attackVector: 'Submitting ballot using token with expired TTL timestamp.',
+    defenseMechanism: 'Server-side token expiration validation & election state finite machine checks.',
+    testedStatus: 'BLOCKED',
+  },
+  {
+    id: 'TV-06',
+    name: 'Unauthorized Administrative Action (Privilege Escalation)',
+    category: 'AUTHENTICATION',
+    description: 'An unauthenticated actor attempts to trigger emergency lockdown, pause election, or modify keys.',
+    attackVector: 'Calling administrative API routes without verified ADMIN role token.',
+    defenseMechanism: 'Server-side Role-Based Access Control (RBAC) token inspection and audit logging.',
+    testedStatus: 'BLOCKED',
+  },
+  {
+    id: 'TV-07',
+    name: 'Validator Outage & Quorum Degradation',
+    category: 'AVAILABILITY',
+    description: 'One or more validator nodes crash or go offline, threatening consensus liveness.',
+    attackVector: 'Disrupting validator node network connections.',
+    defenseMechanism: 'Dynamic Byzantine fault tolerant quorum calculation (requires 2/3 active healthy nodes) + degraded alert.',
+    testedStatus: 'ALERTED',
+  },
+  {
+    id: 'TV-08',
+    name: 'Audit Trail Retroactive Modification',
+    category: 'INTEGRITY',
+    description: 'An administrator attempts to rewrite or delete historical audit log records to conceal misconduct.',
+    attackVector: 'Direct database write to previous audit event details.',
+    defenseMechanism: 'Cryptographic hash-chaining where Event(N).previousHash = Hash(Event(N-1)); immediate verification break.',
+    testedStatus: 'ALERTED',
+  },
+  {
+    id: 'TV-09',
+    name: 'Coercion & Ballot Secrecy Violation',
+    category: 'CONFIDENTIALITY',
+    description: 'A third party coerces a voter to prove how they voted via the verification portal.',
+    attackVector: 'Demanding the voter show receipt hash to reveal candidate choice.',
+    defenseMechanism: 'Zero-Knowledge receipts prove mathematical inclusion without revealing plaintext candidate choice.',
+    testedStatus: 'SECURED',
+  },
+  {
+    id: 'TV-10',
+    name: 'API Flooding / Denial of Service',
+    category: 'AVAILABILITY',
+    description: 'Automated botnet floods vote submission endpoint with high-frequency HTTP requests.',
+    attackVector: 'Submitting 50+ requests/sec from single client.',
+    defenseMechanism: 'Token bucket rate-limiting layer returning 429 Too Many Requests + behavioral fraud score elevation.',
+    testedStatus: 'BLOCKED',
+  },
+];
