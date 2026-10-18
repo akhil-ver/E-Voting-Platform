@@ -109,8 +109,8 @@ public class PasswordResetService {
         // Compute SHA-256 hash for database storage
         String tokenHash = sha256Hex(rawToken);
 
-        // Token expires in 20 minutes
-        LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(20);
+        // Token expires in 15 minutes
+        LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(15);
 
         PasswordResetToken resetToken = new PasswordResetToken(account, tokenHash, expiresAt);
         tokenRepository.save(resetToken);
@@ -124,7 +124,7 @@ public class PasswordResetService {
                 account.getRole().name(),
                 "PASSWORD_RESET_REQUESTED",
                 "UserAccount:" + account.getUsername(),
-                "Password reset token generated with 20-minute validity",
+                "Password reset token generated with 15-minute validity",
                 ipAddress
         );
 
@@ -259,7 +259,7 @@ public class PasswordResetService {
         return "Password has been successfully reset. You can now log in with your new password.";
     }
 
-    private String sha256Hex(String input) {
+    public static String sha256Hex(String input) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));

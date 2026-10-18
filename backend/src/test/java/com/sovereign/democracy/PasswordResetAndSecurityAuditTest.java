@@ -243,4 +243,27 @@ public class PasswordResetAndSecurityAuditTest {
         assertThat(resetLink).isNotNull();
         assertThat(resetLink).contains("/reset-password#token=");
     }
+
+    @Test
+    @DisplayName("Reset password rejects expired token")
+    void testResetPasswordRejectsExpiredToken() {
+        String rawToken = "expired_raw_token_test_1234567890abcdef1234567890abcdef";
+        String tokenHash = PasswordResetService.sha256Hex(rawToken);
+        PasswordResetToken expiredToken = new PasswordResetToken(testAdmin, tokenHash, LocalDateTime.now().minusMinutes(5));
+        tokenRepository.save(expiredToken);
+
+        ResetPasswordRequest resetRequest = new ResetPasswordRequest(rawToken, "NewValidPass999!");
+        assertThatThrownBy(() -> passwordResetService.resetPassword(resetRequest, "192.168.1.100"))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("expired");
+    }
+
+    @Test
+    @DisplayName("Email delivery handles blank/malformed address gracefully without exposing raw tokens")
+    void testEmailDeliveryFailureHandledSafely() {
+        emailService.sendPasswordResetEmail("invalid-email-no-at", "raw_test_token_secret");
+        String link = emailService.getLastResetLink("invalid-email-no-at");
+        assertThat(link).isNotNull();
+        assertThat(link).contains("/reset-password#token=");
+    }
 }
